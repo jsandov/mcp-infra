@@ -32,3 +32,8 @@ output "https_listener_arn" {
   description = "The ARN of the HTTPS listener (null if no certificate provided)"
   value       = try(aws_lb_listener.https[0].arn, null)
 }
+
+output "waf_acl_association_id" {
+  description = "The ID of the WAF ACL association (null if WAF not attached)"
+  value       = try(aws_wafv2_web_acl_association.this[0].id, null)
+}

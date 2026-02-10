@@ -1,6 +1,6 @@
 # ALB Module
 
-Creates an Application Load Balancer with HTTP and optional HTTPS listeners, a default target group, and configurable health checks.
+Creates an Application Load Balancer with HTTP and optional HTTPS listeners, a default target group, configurable health checks, and optional WAF integration.
 
 ## Usage
 
@@ -22,7 +22,7 @@ module "alb" {
 }
 ```
 
-### With HTTPS
+### With HTTPS and WAF
 
 ```hcl
 module "alb" {
@@ -34,6 +34,7 @@ module "alb" {
   security_group_ids = [module.security_groups.web_security_group_id]
   target_port        = 8080
   certificate_arn    = "arn:aws:acm:us-east-1:123456789012:certificate/abc-123"
+  waf_acl_arn        = aws_wafv2_web_acl.main.arn
 
   enable_deletion_protection = true
 
@@ -59,10 +60,13 @@ When a `certificate_arn` is provided, the HTTP listener automatically redirects 
 | `security_group_ids`              | `list(string)` | —                                        | yes      | Security groups for the ALB                 |
 | `internal`                        | `bool`         | `false`                                  | no       | Internal or internet-facing                 |
 | `enable_deletion_protection`      | `bool`         | `false`                                  | no       | Prevent accidental ALB deletion             |
+| `idle_timeout`                    | `number`       | `60`                                     | no       | Idle connection timeout in seconds (1-4000) |
 | `target_port`                     | `number`       | `80`                                     | no       | Port targets listen on                      |
 | `target_type`                     | `string`       | `ip`                                     | no       | Target type (instance, ip, lambda, alb)     |
+| `deregistration_delay`            | `number`       | `30`                                     | no       | Seconds before deregistering targets (0-3600)|
 | `certificate_arn`                 | `string`       | `null`                                   | no       | ACM certificate ARN for HTTPS               |
 | `ssl_policy`                      | `string`       | `ELBSecurityPolicy-TLS13-1-2-2021-06`   | no       | TLS policy for HTTPS listener               |
+| `waf_acl_arn`                     | `string`       | `null`                                   | no       | WAFv2 ACL ARN for Layer 7 protection        |
 | `health_check_path`               | `string`       | `/`                                      | no       | Health check request path                   |
 | `health_check_matcher`            | `string`       | `200`                                    | no       | Expected HTTP status codes                  |
 | `health_check_interval`           | `number`       | `30`                                     | no       | Seconds between health checks               |
@@ -84,11 +88,14 @@ When a `certificate_arn` is provided, the HTTP listener automatically redirects 
 | `default_target_group_arn` | ARN of the default target group                   |
 | `http_listener_arn`        | ARN of the HTTP listener                          |
 | `https_listener_arn`       | ARN of the HTTPS listener (null if no cert)       |
+| `waf_acl_association_id`   | ID of the WAF association (null if no WAF)        |
 
-## Design Notes
+## Security Features
 
 - **TLS 1.3 by default**: Uses `ELBSecurityPolicy-TLS13-1-2-2021-06` which requires TLS 1.2+
-- **HTTP → HTTPS redirect**: Automatic when a certificate is provided
-- **Access logs optional**: Only enabled when `access_logs_bucket` is set
+- **HTTP to HTTPS redirect**: Automatic when a certificate is provided
+- **Drop invalid headers**: `drop_invalid_header_fields` enabled to prevent HTTP request smuggling
+- **WAF integration**: Optional WAFv2 association for OWASP Top 10 protection
+- **Connection draining**: Configurable deregistration delay for graceful shutdown
 - **Deletion protection**: Off by default for dev, enable for production
 - **Target type `ip`**: Default supports Fargate and container-based deployments
