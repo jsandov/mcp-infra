@@ -34,8 +34,13 @@ output "public_route_table_id" {
 }
 
 output "private_route_table_id" {
-  description = "The ID of the private route table"
-  value       = aws_route_table.private.id
+  description = "The ID of the first private route table (for backward compatibility)"
+  value       = aws_route_table.private[0].id
+}
+
+output "private_route_table_ids" {
+  description = "List of private route table IDs (one per AZ when single_nat_gateway is false)"
+  value       = aws_route_table.private[*].id
 }
 
 output "default_security_group_id" {
