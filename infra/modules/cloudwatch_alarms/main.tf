@@ -200,6 +200,28 @@ resource "aws_cloudwatch_metric_alarm" "apigw_latency" {
 }
 
 # -----------------------------------------------------------------------------
+# VPC Flow Logs Rejected Packets Metric Filter
+# -----------------------------------------------------------------------------
+
+# VPC Flow Logs do not publish metrics to CloudWatch natively. This metric
+# filter extracts rejected packet counts from the flow log group so the
+# alarm below has actual data to evaluate.
+resource "aws_cloudwatch_log_metric_filter" "vpc_rejected_packets" {
+  count = var.enable_vpc_rejected_alarm && var.vpc_flow_log_group_name != "" ? 1 : 0
+
+  name           = "${var.environment}-${var.name}-vpc-rejected-packets"
+  log_group_name = var.vpc_flow_log_group_name
+  pattern        = "[version, account_id, interface_id, srcaddr, dstaddr, srcport, dstport, protocol, packets, bytes, start, end, action=\"REJECT\", log_status]"
+
+  metric_transformation {
+    name          = "RejectedPackets"
+    namespace     = "CustomVPCMetrics"
+    value         = "$packets"
+    default_value = 0
+  }
+}
+
+# -----------------------------------------------------------------------------
 # VPC Flow Logs Rejected Packets Alarm
 # -----------------------------------------------------------------------------
 
@@ -219,7 +241,7 @@ resource "aws_cloudwatch_metric_alarm" "vpc_rejected_packets" {
 
     metric {
       metric_name = "RejectedPackets"
-      namespace   = "VPCFlowLogs"
+      namespace   = "CustomVPCMetrics"
       period      = var.vpc_rejected_period
       stat        = "Sum"
 

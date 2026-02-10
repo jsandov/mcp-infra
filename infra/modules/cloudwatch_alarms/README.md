@@ -111,6 +111,19 @@ module "alarms" {
 | `apigw_latency_alarm_arn` | The ARN of the API Gateway latency alarm (null if disabled) |
 | `vpc_rejected_alarm_arn` | The ARN of the VPC rejected packets alarm (null if disabled) |
 
+## VPC Rejected Packets Metric Filter
+
+VPC Flow Logs do not publish metrics to CloudWatch natively. When the VPC rejected packets alarm is enabled (`enable_vpc_rejected_alarm = true`) and a log group name is provided (`vpc_flow_log_group_name`), this module creates a CloudWatch Log Metric Filter that parses the flow log records and extracts rejected packet counts.
+
+The metric filter matches flow log entries where the `action` field equals `REJECT` and publishes the packet count to a custom CloudWatch metric:
+
+- **Namespace:** `CustomVPCMetrics`
+- **Metric name:** `RejectedPackets`
+- **Value:** The `packets` field from each rejected flow log entry
+- **Default value:** `0` (emitted when no matching log events are found)
+
+The corresponding CloudWatch alarm evaluates this custom metric instead of a native AWS namespace. If `vpc_flow_log_group_name` is left empty, the metric filter is not created, and the alarm will report `INSUFFICIENT_DATA`.
+
 ## FedRAMP Controls
 
 | Control | Title | How This Module Helps |
