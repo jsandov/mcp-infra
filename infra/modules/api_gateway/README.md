@@ -77,10 +77,10 @@ module "api_gateway" {
 | ------------------------------- | -------------- | ---------------------------------------------------- | -------- | ---------------------------------------------- |
 | `name`                          | `string`       | `api`                                                | no       | API name (prefixed with environment)           |
 | `description`                   | `string`       | `""`                                                 | no       | API description                                |
-| `environment`                   | `string`       | —                                                    | yes      | Environment name (dev, staging, prod)          |
+| `environment`                   | `string`       | ---                                                    | yes      | Environment name (dev, staging, prod)          |
 | `enable_auto_deploy`            | `bool`         | `true`                                               | no       | Auto-deploy changes to default stage           |
-| `throttling_rate_limit`         | `number`       | `1000`                                               | no       | Requests/second rate limit (1–10000)           |
-| `throttling_burst_limit`        | `number`       | `500`                                                | no       | Burst capacity (1–5000)                        |
+| `throttling_rate_limit`         | `number`       | `1000`                                               | no       | Requests/second rate limit (1--10000)           |
+| `throttling_burst_limit`        | `number`       | `500`                                                | no       | Burst capacity (1--5000)                        |
 | `enable_access_logging`         | `bool`         | `true`                                               | no       | Enable CloudWatch access logging               |
 | `log_retention_days`            | `number`       | `90`                                                 | no       | Log retention in days                          |
 | `kms_key_arn`                   | `string`       | `null`                                               | no       | KMS key for log encryption (null = AWS default)|
@@ -108,14 +108,13 @@ module "api_gateway" {
 | `cloudwatch_log_group_name`| Log group name (null if logging disabled)           |
 | `cloudwatch_log_group_arn` | Log group ARN (null if logging disabled)            |
 | `vpc_link_id`              | VPC Link ID (null if no VPC Link)                   |
-| `execution_role_arn`       | IAM role ARN for logging (null if logging disabled) |
 
 ## Security Features
 
 - **Access logging**: CloudWatch Logs enabled by default with 90-day retention
 - **Log encryption**: Optional customer-managed KMS key (FedRAMP AU-9, SC-28)
 - **Throttling**: Configurable rate and burst limits to prevent abuse (SEC-06)
-- **Least-privilege IAM**: Logging role scoped to specific log group ARN (AC-6)
+- **Least-privilege logging**: CloudWatch access logging scoped to specific log group
 - **WAF integration**: Optional WAFv2 association for OWASP Top 10 protection (SC-7)
 - **VPC Link**: Optional private backend connectivity (SC-7)
 - **CORS**: Restrictive by default, configurable origins and methods
@@ -125,7 +124,6 @@ module "api_gateway" {
 
 | Control | Requirement                          | Implementation                              |
 | ------- | ------------------------------------ | ------------------------------------------- |
-| AC-6    | Least privilege                      | IAM role scoped to log group ARN            |
 | AU-2    | Audit events                         | CloudWatch access logs enabled by default   |
 | AU-3    | Content of audit records             | Request/response metadata in access logs    |
 | AU-9    | Protection of audit information      | KMS encryption on log group                 |

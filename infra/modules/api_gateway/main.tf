@@ -73,61 +73,6 @@ resource "aws_cloudwatch_log_group" "api" {
 }
 
 # -----------------------------------------------------------------------------
-# IAM Role for CloudWatch Logging (least-privilege, scoped to log group)
-# -----------------------------------------------------------------------------
-
-resource "aws_iam_role" "api_logging" {
-  count = var.enable_access_logging ? 1 : 0
-
-  name = "${var.environment}-${var.name}-apigw-logging-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "apigateway.amazonaws.com"
-      }
-    }]
-  })
-
-  tags = merge(var.tags, {
-    Name        = "${var.environment}-${var.name}-apigw-logging-role"
-    Environment = var.environment
-    ManagedBy   = "opentofu"
-  })
-}
-
-# Scoped to the specific log group ARN — least-privilege per CLAUDE.md
-resource "aws_iam_role_policy" "api_logging" {
-  count = var.enable_access_logging ? 1 : 0
-
-  name = "${var.environment}-${var.name}-apigw-logging-policy"
-  role = aws_iam_role.api_logging[0].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = [
-        "logs:CreateLogStream",
-        "logs:PutLogEvents",
-        "logs:DescribeLogStreams"
-      ]
-      Effect   = "Allow"
-      Resource = "${aws_cloudwatch_log_group.api[0].arn}:*"
-    }]
-  })
-}
-
-# Set the CloudWatch role ARN at the account level for API Gateway logging
-resource "aws_api_gateway_account" "this" {
-  count = var.enable_access_logging ? 1 : 0
-
-  cloudwatch_role_arn = aws_iam_role.api_logging[0].arn
-}
-
-# -----------------------------------------------------------------------------
 # VPC Link (conditional — for private backend integration, FedRAMP SC-7)
 # -----------------------------------------------------------------------------
 

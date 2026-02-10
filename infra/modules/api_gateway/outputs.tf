@@ -37,8 +37,3 @@ output "vpc_link_id" {
   description = "The ID of the VPC Link (null if no VPC Link created)"
   value       = try(aws_apigatewayv2_vpc_link.this[0].id, null)
 }
-
-output "execution_role_arn" {
-  description = "The ARN of the IAM role used for CloudWatch logging (null if logging disabled)"
-  value       = try(aws_iam_role.api_logging[0].arn, null)
-}
