@@ -34,17 +34,17 @@ output "lambda_role_arn" {
 
 output "cognito_user_pool_id" {
   description = "ID of the Cognito user pool (null if auth is disabled)"
-  value       = try(aws_cognito_user_pool.this[0].id, null)
+  value       = local.use_external_cognito ? var.cognito_user_pool_id : try(aws_cognito_user_pool.this[0].id, null)
 }
 
 output "cognito_user_pool_endpoint" {
   description = "Endpoint of the Cognito user pool for JWT token issuance (null if auth is disabled)"
-  value       = try(aws_cognito_user_pool.this[0].endpoint, null)
+  value       = local.use_external_cognito ? var.cognito_user_pool_endpoint : try(aws_cognito_user_pool.this[0].endpoint, null)
 }
 
 output "cognito_client_id" {
   description = "Client ID of the Cognito user pool client (null if auth is disabled)"
-  value       = try(aws_cognito_user_pool_client.this[0].id, null)
+  value       = local.use_external_cognito ? var.cognito_client_id : try(aws_cognito_user_pool_client.this[0].id, null)
 }
 
 output "ecr_repository_url" {
@@ -55,6 +55,11 @@ output "ecr_repository_url" {
 output "session_table_name" {
   description = "Name of the DynamoDB session table (null if sessions are disabled)"
   value       = try(aws_dynamodb_table.sessions[0].name, null)
+}
+
+output "session_table_arn" {
+  description = "ARN of the DynamoDB session table (null if sessions are disabled)"
+  value       = try(aws_dynamodb_table.sessions[0].arn, null)
 }
 
 output "log_group_name" {
@@ -70,4 +75,9 @@ output "api_log_group_name" {
 output "sns_topic_arn" {
   description = "ARN of the SNS topic used for CloudWatch alarm notifications"
   value       = local.alarm_sns_topic_arn
+}
+
+output "tenant_isolation_enabled" {
+  description = "Whether Lambda tenant isolation mode is enabled"
+  value       = var.enable_tenant_isolation
 }

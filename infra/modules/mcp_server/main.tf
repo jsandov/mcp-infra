@@ -18,9 +18,21 @@ locals {
 
   tags = merge(local.default_tags, var.tags)
 
+  # Cognito resolution — external vs. internally created
+  use_external_cognito = var.cognito_user_pool_id != null
+  create_cognito       = var.enable_auth && !local.use_external_cognito
+
+  cognito_issuer = local.use_external_cognito ? "https://${var.cognito_user_pool_endpoint}" : (
+    local.create_cognito ? "https://${aws_cognito_user_pool.this[0].endpoint}" : null
+  )
+  cognito_audience = local.use_external_cognito ? [var.cognito_client_id] : (
+    local.create_cognito ? [aws_cognito_user_pool_client.this[0].id] : null
+  )
+
   lambda_environment_variables = merge(
     var.environment_variables,
-    var.enable_session_table ? { SESSION_TABLE_NAME = aws_dynamodb_table.sessions[0].name } : {}
+    var.enable_session_table ? { SESSION_TABLE_NAME = aws_dynamodb_table.sessions[0].name } : {},
+    var.enable_tenant_isolation ? { TENANT_ISOLATION_ENABLED = "true" } : {}
   )
 
   alarm_sns_topic_arn = var.alarm_sns_topic_arn != null ? var.alarm_sns_topic_arn : (
@@ -41,7 +53,7 @@ data "aws_region" "current" {}
 # ---------------------------------------------------------------------------
 
 resource "aws_cognito_user_pool" "this" {
-  count = var.enable_auth ? 1 : 0
+  count = local.create_cognito ? 1 : 0
 
   name                = "${local.name_prefix}-mcp"
   deletion_protection = var.environment == "prod" ? "ACTIVE" : "INACTIVE"
@@ -50,14 +62,14 @@ resource "aws_cognito_user_pool" "this" {
 }
 
 resource "aws_cognito_user_pool_domain" "this" {
-  count = var.enable_auth ? 1 : 0
+  count = local.create_cognito ? 1 : 0
 
   domain       = "${local.name_prefix}-mcp"
   user_pool_id = aws_cognito_user_pool.this[0].id
 }
 
 resource "aws_cognito_resource_server" "this" {
-  count = var.enable_auth ? 1 : 0
+  count = local.create_cognito ? 1 : 0
 
   identifier   = "mcp"
   name         = "${local.name_prefix}-mcp-resource-server"
@@ -70,7 +82,7 @@ resource "aws_cognito_resource_server" "this" {
 }
 
 resource "aws_cognito_user_pool_client" "this" {
-  count = var.enable_auth ? 1 : 0
+  count = local.create_cognito ? 1 : 0
 
   name                                 = "${local.name_prefix}-mcp-client"
   user_pool_id                         = aws_cognito_user_pool.this[0].id
@@ -160,7 +172,10 @@ resource "aws_iam_role_policy" "dynamodb_access" {
         "dynamodb:DeleteItem",
         "dynamodb:Query"
       ]
-      Resource = [aws_dynamodb_table.sessions[0].arn]
+      Resource = compact([
+        aws_dynamodb_table.sessions[0].arn,
+        var.enable_tenant_isolation ? "${aws_dynamodb_table.sessions[0].arn}/index/session-id-index" : ""
+      ])
     }]
   })
 }
@@ -209,6 +224,14 @@ resource "aws_lambda_function" "this" {
     mode = var.enable_xray_tracing ? "Active" : "PassThrough"
   }
 
+  # Tenant isolation — per-tenant Firecracker VM isolation (FedRAMP SC-7)
+  dynamic "tenancy_config" {
+    for_each = var.enable_tenant_isolation ? [1] : []
+    content {
+      tenant_isolation_mode = "PER_TENANT"
+    }
+  }
+
   dynamic "environment" {
     for_each = length(local.lambda_environment_variables) > 0 ? [1] : []
     content {
@@ -230,11 +253,11 @@ resource "aws_apigatewayv2_api" "this" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins = var.cors_allowed_origins
-    allow_methods = ["GET", "POST", "DELETE", "OPTIONS"]
-    allow_headers = ["Content-Type", "Authorization", "Mcp-Session-Id"]
+    allow_origins  = var.cors_allowed_origins
+    allow_methods  = ["GET", "POST", "DELETE", "OPTIONS"]
+    allow_headers  = ["Content-Type", "Authorization", "Mcp-Session-Id"]
     expose_headers = ["Mcp-Session-Id"]
-    max_age       = 86400
+    max_age        = 86400
   }
 
   tags = local.tags
@@ -265,6 +288,16 @@ resource "aws_apigatewayv2_stage" "default" {
     throttling_burst_limit = var.throttle_burst_limit
   }
 
+  # Per-route throttle overrides
+  dynamic "route_settings" {
+    for_each = var.route_throttle_overrides
+    content {
+      route_key              = route_settings.key
+      throttling_rate_limit  = route_settings.value.throttling_rate_limit
+      throttling_burst_limit = route_settings.value.throttling_burst_limit
+    }
+  }
+
   tags = local.tags
 }
 
@@ -278,8 +311,8 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   name             = "${local.name_prefix}-cognito"
 
   jwt_configuration {
-    issuer   = "https://${aws_cognito_user_pool.this[0].endpoint}"
-    audience = [aws_cognito_user_pool_client.this[0].id]
+    issuer   = local.cognito_issuer
+    audience = local.cognito_audience
   }
 }
 
@@ -377,10 +410,10 @@ resource "aws_ecr_lifecycle_policy" "this" {
         rulePriority = 1
         description  = "Keep last 10 tagged images"
         selection = {
-          tagStatus   = "tagged"
+          tagStatus     = "tagged"
           tagPrefixList = ["v"]
-          countType   = "imageCountMoreThan"
-          countNumber = 10
+          countType     = "imageCountMoreThan"
+          countNumber   = 10
         }
         action = {
           type = "expire"
@@ -390,9 +423,9 @@ resource "aws_ecr_lifecycle_policy" "this" {
         rulePriority = 2
         description  = "Expire untagged images after 7 days"
         selection = {
-          tagStatus  = "untagged"
-          countType  = "sinceImagePushed"
-          countUnit  = "days"
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
           countNumber = 7
         }
         action = {
@@ -412,11 +445,29 @@ resource "aws_dynamodb_table" "sessions" {
 
   name         = "${local.name_prefix}-mcp-sessions"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "session_id"
+  hash_key     = var.enable_tenant_isolation ? "tenant_id" : "session_id"
+  range_key    = var.enable_tenant_isolation ? "session_id" : null
 
   attribute {
     name = "session_id"
     type = "S"
+  }
+
+  dynamic "attribute" {
+    for_each = var.enable_tenant_isolation ? [1] : []
+    content {
+      name = "tenant_id"
+      type = "S"
+    }
+  }
+
+  dynamic "global_secondary_index" {
+    for_each = var.enable_tenant_isolation ? [1] : []
+    content {
+      name            = "session-id-index"
+      hash_key        = "session_id"
+      projection_type = "ALL"
+    }
   }
 
   ttl {
