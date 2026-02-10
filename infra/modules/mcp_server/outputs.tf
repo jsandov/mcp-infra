@@ -32,8 +32,13 @@ output "lambda_role_arn" {
   value       = aws_iam_role.lambda.arn
 }
 
+output "lambda_role_name" {
+  description = "Name of the IAM role used by the Lambda function"
+  value       = aws_iam_role.lambda.name
+}
+
 output "cognito_user_pool_id" {
-  description = "ID of the Cognito user pool (null if auth is disabled)"
+  description = "ID of the Cognito user pool (null if auth is disabled or using external pool)"
   value       = local.use_external_cognito ? var.cognito_user_pool_id : try(aws_cognito_user_pool.this[0].id, null)
 }
 
@@ -43,7 +48,7 @@ output "cognito_user_pool_endpoint" {
 }
 
 output "cognito_client_id" {
-  description = "Client ID of the Cognito user pool client (null if auth is disabled)"
+  description = "Client ID of the Cognito user pool client (null if auth is disabled or using external pool)"
   value       = local.use_external_cognito ? var.cognito_client_id : try(aws_cognito_user_pool_client.this[0].id, null)
 }
 

@@ -14,3 +14,5 @@ Per-module Mermaid diagrams for the cloud-voyager-infra modules.
 | VPC Endpoints | [vpc-endpoints.md](vpc-endpoints.md) |
 | Lambda | [lambda.md](lambda.md) |
 | MCP Server | [mcp-server.md](mcp-server.md) |
+| Token Vending Machine | [mcp-token-vending-machine.md](mcp-token-vending-machine.md) |
+| Tenant Metering | [mcp-tenant-metering.md](mcp-tenant-metering.md) |

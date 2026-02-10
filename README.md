@@ -38,6 +38,8 @@ cloud-voyager-infra/
 │   │   ├── cloudwatch-alarms.md
 │   │   ├── lambda.md
 │   │   ├── mcp-server.md
+│   │   ├── mcp-token-vending-machine.md
+│   │   ├── mcp-tenant-metering.md
 │   │   └── vpc-endpoints.md
 │   └── infracost-setup.md           // CI cost estimation setup guide
 ├── infra/
@@ -51,6 +53,8 @@ cloud-voyager-infra/
 │   │   ├── cloudwatch_alarms/       // SNS + alarms for observability
 │   │   ├── lambda/                  // FedRAMP-compliant Lambda functions
 │   │   ├── mcp_server/             // MCP server on Lambda + API Gateway
+│   │   ├── mcp_token_vending_machine/ // Tenant-scoped IAM via STS
+│   │   ├── mcp_tenant_metering/   // Per-tenant usage tracking
 │   │   └── vpc_endpoints/           // S3 + DynamoDB Gateway endpoints
 │   ├── main.tf                      // Root config — wires modules
 │   ├── variables.tf                 // Root-level variables
@@ -234,6 +238,32 @@ Production-ready MCP server on Lambda with API Gateway v2, Cognito OAuth 2.0 aut
 `FedRAMP: SC-7 · SC-8 · SC-28 · AC-6 · AU-2 · SI-4 · IA-2 · CM-7`
 
 [`> ACCESS DISC`](infra/modules/mcp_server/README.md)
+
+</td>
+<td width="50%" valign="top">
+
+### `[TOKEN VENDING MACHINE]`
+**Tenant IAM Credentials**
+
+STS AssumeRole pattern for tenant-scoped IAM credentials with permission boundaries, session tags, and template tenant roles. Zero-trust multi-tenancy.
+
+`FedRAMP: AC-6 · AC-2 · SC-7`
+
+[`> ACCESS DISC`](infra/modules/mcp_token_vending_machine/README.md)
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### `[TENANT METERING]`
+**Usage Tracking & Quotas**
+
+Per-tenant API usage tracking via DynamoDB, CloudWatch metric filters for aggregate monitoring, and configurable quota alarms with SNS notifications.
+
+`FedRAMP: AU-2 · SI-4 · CM-7 · IR-4`
+
+[`> ACCESS DISC`](infra/modules/mcp_tenant_metering/README.md)
 
 </td>
 <td width="50%" valign="top">
