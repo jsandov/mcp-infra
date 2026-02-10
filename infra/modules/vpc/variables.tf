@@ -54,6 +54,18 @@ variable "enable_nat_gateway" {
   default     = false
 }
 
+variable "single_nat_gateway" {
+  description = "Whether to provision a single shared NAT Gateway (true) or one NAT Gateway per AZ for high availability (false)"
+  type        = bool
+  default     = true
+}
+
+variable "map_public_ip_on_launch" {
+  description = "Whether instances launched in public subnets receive a public IP address"
+  type        = bool
+  default     = true
+}
+
 variable "enable_flow_logs" {
   description = "Whether to enable VPC Flow Logs for network traffic monitoring"
   type        = bool
