@@ -29,17 +29,14 @@
 cloud-voyager-infra/
 ├── CLAUDE.md                        // Project conventions & security practices
 ├── docs/
-│   ├── prd/                         // Per-module product requirement docs
-│   │   ├── README.md                //   Module inventory & conventions
-│   │   ├── vpc.md                   //   VPC module PRD
-│   │   ├── security-groups.md       //   Security Groups PRD
-│   │   ├── alb.md                   //   ALB PRD
-│   │   ├── api-gateway.md           //   API Gateway PRD
-│   │   ├── kms.md                   //   KMS PRD
-│   │   ├── remote-state.md          //   Remote State PRD
-│   │   ├── cloudwatch-alarms.md     //   CloudWatch Alarms PRD
-│   │   └── ci-cd.md                 //   CI/CD Pipeline PRD
-│   ├── architecture.md              // Infrastructure diagrams (Mermaid)
+│   ├── architecture/                // Per-module Mermaid diagrams
+│   │   ├── vpc.md
+│   │   ├── security-groups.md
+│   │   ├── alb.md
+│   │   ├── api-gateway.md
+│   │   ├── kms.md
+│   │   ├── remote-state.md
+│   │   └── cloudwatch-alarms.md
 │   └── infracost-setup.md           // CI cost estimation setup guide
 ├── infra/
 │   ├── modules/
@@ -253,7 +250,7 @@ See [Infracost Setup Guide](docs/infracost-setup.md) for configuring CI secrets.
 
 See [CLAUDE.md](CLAUDE.md) for project conventions, security practices, and module authoring guidelines.
 
-See [docs/prd/](docs/prd/) for per-module product requirement documents.
+See [docs/architecture/](docs/architecture/) for per-module architecture diagrams.
 
 <br>
 

@@ -8,7 +8,7 @@ Provisions an S3 bucket and DynamoDB table for OpenTofu remote state management 
 
 ```hcl
 module "remote_state" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/remote_state?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/remote_state?ref=v1.0.0"
 
   bucket_name     = "my-org-terraform-state"
   lock_table_name = "terraform-state-lock"
@@ -24,7 +24,7 @@ module "remote_state" {
 
 ```hcl
 module "remote_state" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/remote_state?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/remote_state?ref=v1.0.0"
 
   bucket_name  = "my-org-terraform-state"
   environment  = "prod"
@@ -45,7 +45,7 @@ module "remote_state" {
 
 ```hcl
 module "remote_state" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/remote_state?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/remote_state?ref=v1.0.0"
 
   bucket_name        = "my-org-terraform-state"
   environment        = "prod"

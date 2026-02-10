@@ -1,6 +1,6 @@
-# CLAUDE.md — mcp-infra Project Conventions
+# CLAUDE.md — cloud-voyager-infra Project Conventions
 
-This file defines coding standards, security practices, and module authoring guidelines for the `mcp-infra` OpenTofu infrastructure-as-code repository.
+This file defines coding standards, security practices, and module authoring guidelines for the `cloud-voyager-infra` OpenTofu infrastructure-as-code repository.
 
 ---
 
@@ -135,7 +135,7 @@ Every module must contain:
 - Consumers reference modules via git source URLs with version pins:
   ```hcl
   module "vpc" {
-    source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/vpc?ref=v1.0.0"
+    source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/vpc?ref=v1.0.0"
   }
   ```
 - **Document breaking changes** in the module's README under a Changelog or Migration section
@@ -159,22 +159,25 @@ Use the `tags` variable to allow consumers to add additional tags.
 ## Project Structure
 
 ```text
-mcp-infra/
-├── CLAUDE.md              # This file — project conventions
+cloud-voyager-infra/
+├── CLAUDE.md                        # This file — project conventions
 ├── docs/
-│   └── prd.md             # Product requirements document
+│   ├── architecture/                # Per-module Mermaid diagrams
+│   └── infracost-setup.md           # CI cost estimation setup guide
 └── infra/
-    ├── main.tf            # Root configuration
-    ├── variables.tf       # Root variables
-    ├── outputs.tf         # Root outputs
-    ├── providers.tf       # AWS provider config
-    ├── versions.tf        # Version constraints
+    ├── main.tf                      # Root configuration
+    ├── variables.tf                 # Root variables
+    ├── outputs.tf                   # Root outputs
+    ├── providers.tf                 # AWS provider config
+    ├── versions.tf                  # Version constraints
     └── modules/
-        └── vpc/
-            ├── main.tf
-            ├── variables.tf
-            ├── outputs.tf
-            └── README.md
+        ├── vpc/                     # VPC + subnets + NAT + flow logs
+        ├── security_groups/         # Tiered SGs (web/app/db/bastion)
+        ├── alb/                     # Application Load Balancer + WAF
+        ├── api_gateway/             # API Gateway v2 (HTTP API)
+        ├── kms/                     # Customer-managed encryption keys
+        ├── remote_state/            # S3 + DynamoDB state backend
+        └── cloudwatch_alarms/       # SNS + alarms for observability
 ```
 
 ---

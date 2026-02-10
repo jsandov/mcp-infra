@@ -23,7 +23,7 @@ output "backend_config" {
   value       = <<-EOT
     backend "s3" {
       bucket         = "${aws_s3_bucket.state.id}"
-      key            = "mcp-infra/terraform.tfstate"
+      key            = "cloud-voyager-infra/terraform.tfstate"
       region         = "${data.aws_region.current.name}"
       encrypt        = true
       dynamodb_table = "${aws_dynamodb_table.lock.name}"

@@ -42,7 +42,7 @@ Create a role with a trust policy that allows your repository:
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:jsandov/mcp-infra:*"
+          "token.actions.githubusercontent.com:sub": "repo:jsandov/cloud-voyager-infra:*"
         }
       }
     }

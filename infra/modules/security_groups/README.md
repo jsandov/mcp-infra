@@ -16,7 +16,7 @@ Internet --> [Web SG: 80, 443] --> [App SG: app_port] --> [DB SG: db_port]
 
 ```hcl
 module "security_groups" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/security_groups?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/security_groups?ref=v1.0.0"
 
   vpc_id      = module.vpc.vpc_id
   environment = "dev"
@@ -40,7 +40,7 @@ module "security_groups" {
 
 ```hcl
 module "security_groups" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/security_groups?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/security_groups?ref=v1.0.0"
 
   vpc_id      = module.vpc.vpc_id
   environment = "prod"
