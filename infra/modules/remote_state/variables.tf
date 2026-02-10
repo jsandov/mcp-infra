@@ -47,6 +47,18 @@ variable "allowed_principal_arns" {
   default     = []
 }
 
+variable "access_logs_bucket" {
+  description = "S3 bucket name for state bucket access logging. If null, access logging is disabled."
+  type        = string
+  default     = null
+}
+
+variable "access_logs_prefix" {
+  description = "S3 key prefix for access logs"
+  type        = string
+  default     = "state-access-logs"
+}
+
 variable "tags" {
   description = "Additional tags to apply to all resources"
   type        = map(string)

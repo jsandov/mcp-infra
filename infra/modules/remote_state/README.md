@@ -41,18 +41,37 @@ module "remote_state" {
 }
 ```
 
+### With Access Logging
+
+```hcl
+module "remote_state" {
+  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/remote_state?ref=v1.0.0"
+
+  bucket_name        = "my-org-terraform-state"
+  environment        = "prod"
+  access_logs_bucket = "my-org-access-logs"
+  access_logs_prefix = "state-access-logs"
+
+  tags = {
+    Project = "my-project"
+  }
+}
+```
+
 After applying, copy the `backend_config` output into your `versions.tf` and run `tofu init -migrate-state`.
 
 ## Inputs
 
 | Name                                | Type           | Default                  | Required | Description                                      |
 | ----------------------------------- | -------------- | ------------------------ | -------- | ------------------------------------------------ |
-| `bucket_name`                       | `string`       | —                        | yes      | S3 bucket name for state storage                 |
+| `bucket_name`                       | `string`       | --                       | yes      | S3 bucket name for state storage                 |
 | `lock_table_name`                   | `string`       | `terraform-state-lock`   | no       | DynamoDB table name for state locking            |
-| `environment`                       | `string`       | —                        | yes      | Environment name (dev, staging, prod)            |
+| `environment`                       | `string`       | --                       | yes      | Environment name (dev, staging, prod)            |
 | `noncurrent_version_expiration_days`| `number`       | `90`                     | no       | Days before old state versions are deleted       |
 | `kms_key_arn`                       | `string`       | `null`                   | no       | Customer-managed KMS key ARN (null = AES-256)    |
 | `allowed_principal_arns`            | `list(string)` | `[]`                     | no       | IAM principals allowed to access the bucket      |
+| `access_logs_bucket`                | `string`       | `null`                   | no       | S3 bucket for access logging (null = disabled)   |
+| `access_logs_prefix`                | `string`       | `state-access-logs`      | no       | S3 key prefix for access logs                    |
 | `tags`                              | `map(string)`  | `{}`                     | no       | Additional tags for all resources                |
 
 ## Outputs
@@ -75,3 +94,4 @@ After applying, copy the `backend_config` output into your `versions.tf` and run
 - **Point-in-time recovery**: DynamoDB PITR enabled for lock table disaster recovery
 - **Lifecycle management**: Noncurrent versions expire after configurable days (default 90)
 - **On-demand billing**: DynamoDB uses PAY_PER_REQUEST to avoid over-provisioning
+- **Access logging**: Optional S3 server access logging for audit trails (FedRAMP AU-2/AU-3)
