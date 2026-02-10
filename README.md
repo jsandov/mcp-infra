@@ -1,30 +1,6 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/%E2%96%B2-CLOUD_VOYAGER_INFRA-00FFFF?style=for-the-badge&labelColor=0a0a0a">
-    <img alt="Cloud Voyager Infra" src="https://img.shields.io/badge/%E2%96%B2-CLOUD_VOYAGER_INFRA-00FFFF?style=for-the-badge&labelColor=0a0a0a">
-  </picture>
+  <img src="docs/banner.svg" alt="Cloud Voyager Infra" width="820">
 </p>
-
-```
- ╔══════════════════════════════════════════════════════════════════════════╗
- ║                                                                        ║
- ║    ██████╗██╗      ██████╗ ██╗   ██╗██████╗                            ║
- ║   ██╔════╝██║     ██╔═══██╗██║   ██║██╔══██╗                           ║
- ║   ██║     ██║     ██║   ██║██║   ██║██║  ██║                           ║
- ║   ██║     ██║     ██║   ██║██║   ██║██║  ██║                           ║
- ║   ╚██████╗███████╗╚██████╔╝╚██████╔╝██████╔╝                          ║
- ║    ╚═════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝                           ║
- ║   ██╗   ██╗ ██████╗ ██╗   ██╗ █████╗  ██████╗ ███████╗██████╗         ║
- ║   ██║   ██║██╔═══██╗╚██╗ ██╔╝██╔══██╗██╔════╝ ██╔════╝██╔══██╗       ║
- ║   ██║   ██║██║   ██║ ╚████╔╝ ███████║██║  ███╗█████╗  ██████╔╝       ║
- ║   ╚██╗ ██╔╝██║   ██║  ╚██╔╝  ██╔══██║██║   ██║██╔══╝  ██╔══██╗      ║
- ║    ╚████╔╝ ╚██████╔╝   ██║   ██║  ██║╚██████╔╝███████╗██║  ██║       ║
- ║     ╚═══╝   ╚═════╝    ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝      ║
- ║                                                                        ║
- ║              I N F R A S T R U C T U R E   A S   C O D E              ║
- ║                                                                        ║
- ╚══════════════════════════════════════════════════════════════════════════╝
-```
 
 <p align="center">
   <img src="https://img.shields.io/badge/OpenTofu-%3E%3D1.11.0-00FFFF?style=flat-square&logo=opentofu&logoColor=00FFFF&labelColor=0d1117" alt="OpenTofu">
