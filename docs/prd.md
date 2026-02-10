@@ -91,16 +91,22 @@ Create the initial infrastructure directory structure with a VPC module as the f
   ```text
   infra/
   ├── modules/
-  │   └── vpc/
+  │   ├── vpc/
+  │   │   ├── main.tf
+  │   │   ├── variables.tf
+  │   │   ├── outputs.tf
+  │   │   └── README.md
+  │   └── security_groups/
   │       ├── main.tf
   │       ├── variables.tf
   │       ├── outputs.tf
   │       └── README.md
-  ├── main.tf          # Root config — calls modules
-  ├── variables.tf     # Root-level variables
-  ├── outputs.tf       # Root-level outputs
-  ├── providers.tf     # AWS provider config
-  └── versions.tf      # OpenTofu and provider version constraints
+  ├── main.tf                  # Root config — calls modules
+  ├── variables.tf             # Root-level variables
+  ├── outputs.tf               # Root-level outputs
+  ├── providers.tf             # AWS provider config
+  ├── versions.tf              # OpenTofu and provider version constraints
+  └── terraform.tfvars.example  # Example variable values
   ```
 
 - **VPC module scope**
@@ -124,7 +130,7 @@ Create the initial infrastructure directory structure with a VPC module as the f
 
 ## Feature 4: GitHub Actions — OpenTofu Plan + Infracost
 
-**Status: In Progress**
+**Status: Complete** (PR #6, merged)
 
 ### Feature 4 Purpose
 
@@ -165,6 +171,77 @@ Automate infrastructure validation and cost estimation on pull requests. Every P
 
 ---
 
+## Feature 5: VPC Hardening — Default Resources, Validations, Outputs
+
+**Status: Complete** (PR #16, merged)
+
+### Feature 5 Purpose
+
+Harden the VPC module by managing default AWS resources with deny-all rules, adding input validations, and exposing all useful outputs.
+
+### Feature 5 Requirements
+
+- **Default resource management**
+  - `aws_default_security_group` with no ingress/egress rules (deny-all)
+  - `aws_default_network_acl` with no rules (deny-all)
+  - `aws_default_route_table` with no routes
+
+- **Variable validations**
+  - `environment`: must be one of `dev`, `staging`, `prod`
+  - `public_subnet_cidrs`: at least one CIDR required
+  - `private_subnet_cidrs`: at least one CIDR required
+  - `availability_zones`: between 1 and 6 AZs
+
+- **Missing outputs**
+  - `public_route_table_id`, `private_route_table_id`, `default_security_group_id`
+  - All module outputs exposed at root level
+
+- **Developer experience**
+  - `terraform.tfvars.example` with correct variable names and defaults
+
+---
+
+## Feature 6: VPC Flow Logs — Network Monitoring
+
+**Status: Complete** (PR #18, merged)
+
+### Feature 6 Purpose
+
+Add VPC Flow Logs for network traffic monitoring and security analysis.
+
+### Feature 6 Requirements
+
+- `aws_flow_log` resource capturing all traffic (accept + reject)
+- CloudWatch Logs destination with configurable retention
+- IAM role with least-privilege policy for flow log delivery
+- `enable_flow_logs` variable (default: `true` — secure by default)
+- `flow_log_retention_days` variable validated against CloudWatch allowed values
+- Outputs: `flow_log_id`, `flow_log_group_name`
+
+---
+
+## Feature 7: Security Groups Module — Tiered Access Patterns
+
+**Status: Complete** (PR #17, merged)
+
+### Feature 7 Purpose
+
+Provide reusable security group patterns for common infrastructure tiers.
+
+### Feature 7 Requirements
+
+- New module at `infra/modules/security_groups/`
+- **Web tier** — HTTP (80) and HTTPS (443) from internet
+- **Application tier** — configurable port, ingress only from web SG
+- **Database tier** — configurable port, ingress only from app SG
+- **Bastion** — SSH (22) from allowed CIDRs (off by default)
+- Each tier independently toggleable
+- All rules with descriptions for compliance
+- Port and CIDR validations
+- `name_prefix` + `create_before_destroy` lifecycle for zero-downtime replacement
+
+---
+
 ## Module Versioning Strategy (Recommendation)
 
 ### Approach: Git Tags + Source URLs
@@ -200,14 +277,20 @@ This is the simplest approach that requires no additional infrastructure.
 
 Each feature is implemented on a **separate branch** using **git worktrees** for isolation. Parallel subagents are used where tasks are independent:
 
-| Feature                        | Branch                 | Status    |
-| ------------------------------ | ---------------------- | --------- |
-| CLAUDE.md                      | `feature/claude-md`    | Merged    |
-| .gitignore                     | `feature/gitignore`    | Merged    |
-| Infrastructure folder          | `feature/infra-vpc`    | Merged    |
-| Architecture diagram           | `feature/infra-diagram`| Merged    |
-| PRD update                     | `feature/prd-update`   | In Progress |
-| CI workflow + Infracost        | `feature/ci-infracost` | In Progress |
+| Feature                           | Branch                    | Status  |
+| --------------------------------- | ------------------------- | ------- |
+| CLAUDE.md                         | `feature/claude-md`       | Merged  |
+| .gitignore                        | `feature/gitignore`       | Merged  |
+| Infrastructure folder             | `feature/infra-vpc`       | Merged  |
+| Architecture diagram              | `feature/infra-diagram`   | Merged  |
+| PRD update (Features 1–3)         | `feature/prd-update`      | Merged  |
+| CI workflow + Infracost           | `feature/ci-infracost`    | Merged  |
+| OpenTofu 1.11.0                   | `feature/opentofu-1.11`   | Merged  |
+| VPC hardening                     | `feature/harden-vpc`      | Merged  |
+| VPC Flow Logs                     | `feature/vpc-flow-logs-v2`| Merged  |
+| Security Groups module            | `feature/security-groups` | Merged  |
+| PRD update (Features 4–7)         | `feature/prd-update-v2`   | Pending |
+| Architecture diagram update       | `feature/diagram-update`  | Pending |
 
 ---
 
@@ -215,7 +298,7 @@ Each feature is implemented on a **separate branch** using **git worktrees** for
 
 - Remote state backend setup (S3 + DynamoDB)
 - `tofu apply` automation (CI runs plan only, apply is manual)
-- Additional AWS resources beyond VPC
+- Additional AWS resources beyond VPC and security groups
 - Private module registry
 - Terratest or other IaC testing frameworks
 
@@ -229,6 +312,10 @@ Each feature is implemented on a **separate branch** using **git worktrees** for
 - [x] `tofu fmt` and `tofu validate` pass on all `.tf` files
 - [x] Module is consumable via git source URL pattern
 - [x] Architecture diagram documents VPC topology
-- [ ] GitHub Actions workflow runs `tofu plan` on PRs
-- [ ] Infracost posts cost breakdown as PR comment
-- [ ] Setup documentation for required secrets and API keys
+- [x] GitHub Actions workflow runs `tofu plan` on PRs
+- [x] Infracost posts cost breakdown as PR comment
+- [x] Setup documentation for required secrets and API keys
+- [x] VPC default resources managed with deny-all rules
+- [x] Variable validations on all critical inputs
+- [x] VPC Flow Logs enabled by default
+- [x] Security groups module with tiered access patterns
