@@ -1,46 +1,58 @@
-# Infracost Setup Guide
+# CI Setup Guide
 
-This guide explains how to configure the required secrets for the GitHub Actions workflow that runs `tofu plan` and Infracost cost estimation on pull requests.
+This guide explains how to configure the required secrets and authentication for the GitHub Actions workflow that runs `tofu plan`, security scanning, and Infracost cost estimation on pull requests.
 
 ## Prerequisites
 
 - A GitHub repository with the workflow file at `.github/workflows/tofu-plan.yml`
-- An AWS account with credentials for running `tofu plan`
+- An AWS account with an IAM OIDC provider for GitHub Actions
 - Access to create GitHub repository secrets
 
 ---
 
-## 1. Get a Free Infracost API Key
+## 1. Configure AWS OIDC Authentication (Recommended)
 
-Infracost offers a free tier for open-source and small teams.
+OIDC eliminates the need for long-lived AWS access keys. GitHub Actions assumes an IAM role directly.
 
-### Option A: Via CLI
+### Create the OIDC Provider
 
 ```bash
-# Install Infracost
-brew install infracost
-
-# Authenticate (opens browser)
-infracost auth login
-
-# Retrieve your API key
-infracost configure get api_key
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1
 ```
 
-### Option B: Via Website
+### Create the IAM Role
 
-1. Go to [infracost.io](https://www.infracost.io/)
-2. Sign up for a free account
-3. Navigate to **Org Settings** > **API Keys**
-4. Copy your API key
+Create a role with a trust policy that allows your repository:
 
----
-
-## 2. Create an AWS IAM User for CI
-
-Create a dedicated IAM user with **read-only** permissions for running `tofu plan`. This user does not need write access since the workflow only plans, never applies.
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:jsandov/mcp-infra:*"
+        }
+      }
+    }
+  ]
+}
+```
 
 ### Recommended IAM Policy
+
+Attach a read-only policy for `tofu plan`:
 
 ```json
 {
@@ -58,7 +70,10 @@ Create a dedicated IAM user with **read-only** permissions for running `tofu pla
         "rds:Describe*",
         "s3:Get*",
         "s3:List*",
-        "sts:GetCallerIdentity"
+        "sts:GetCallerIdentity",
+        "logs:Describe*",
+        "logs:Get*",
+        "dynamodb:Describe*"
       ],
       "Resource": "*"
     }
@@ -66,7 +81,26 @@ Create a dedicated IAM user with **read-only** permissions for running `tofu pla
 }
 ```
 
-After creating the user, generate an **Access Key** (Security credentials > Access keys > Create access key).
+---
+
+## 2. Get a Free Infracost API Key
+
+Infracost offers a free tier for open-source and small teams.
+
+### Option A: Via CLI
+
+```bash
+brew install infracost
+infracost auth login
+infracost configure get api_key
+```
+
+### Option B: Via Website
+
+1. Go to [infracost.io](https://www.infracost.io/)
+2. Sign up for a free account
+3. Navigate to **Org Settings** > **API Keys**
+4. Copy your API key
 
 ---
 
@@ -74,13 +108,10 @@ After creating the user, generate an **Access Key** (Security credentials > Acce
 
 Navigate to your repository: **Settings** > **Secrets and variables** > **Actions** > **New repository secret**
 
-Add the following three secrets:
-
-| Secret Name              | Value                              |
-| ------------------------ | ---------------------------------- |
-| `AWS_ACCESS_KEY_ID`      | Your AWS IAM user access key ID    |
-| `AWS_SECRET_ACCESS_KEY`  | Your AWS IAM user secret key       |
-| `INFRACOST_API_KEY`      | Your Infracost API key             |
+| Secret Name        | Value                                    |
+| ------------------ | ---------------------------------------- |
+| `AWS_ROLE_ARN`     | ARN of the OIDC IAM role (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`) |
+| `INFRACOST_API_KEY` | Your Infracost API key                  |
 
 ---
 
@@ -90,8 +121,9 @@ Add the following three secrets:
 2. Open a pull request targeting `main`
 3. The workflow should trigger automatically
 4. Check the **Actions** tab for workflow progress
-5. Two comments should appear on the PR:
-   - **OpenTofu Plan Results** — format check, validation, and plan output
+5. Three jobs should run:
+   - **OpenTofu Plan** — format check, validation, and plan output as PR comment
+   - **Security Scanning** — TFLint, Trivy, and Checkov results
    - **Infracost** — monthly cost estimate with breakdown by resource
 
 ---
@@ -101,7 +133,21 @@ Add the following three secrets:
 | Issue | Solution |
 | --- | --- |
 | Workflow doesn't trigger | Ensure the PR modifies files under `infra/` and targets `main` |
-| AWS authentication fails | Verify `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` secrets are set correctly |
+| OIDC authentication fails | Verify the OIDC provider exists, role trust policy matches repo, and `AWS_ROLE_ARN` secret is correct |
 | Infracost error | Verify `INFRACOST_API_KEY` is set; run `infracost configure get api_key` locally to confirm |
 | Plan fails but cost works | Infracost parses HCL directly and doesn't need AWS credentials; plan needs valid credentials |
 | Comment not appearing | Check that the workflow has `pull-requests: write` permission |
+| Security scan failures | Scans run with soft-fail; check job logs for details on findings |
+
+---
+
+## Legacy: Access Key Authentication
+
+If you cannot use OIDC, you can fall back to access keys:
+
+1. Create an IAM user with the read-only policy above
+2. Generate access keys
+3. Add secrets: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+4. Update the workflow to use env vars instead of `configure-aws-credentials`
+
+OIDC is strongly recommended as it eliminates long-lived credentials.
