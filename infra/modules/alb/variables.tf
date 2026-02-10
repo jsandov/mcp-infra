@@ -56,6 +56,17 @@ variable "enable_deletion_protection" {
   default     = false
 }
 
+variable "idle_timeout" {
+  description = "Time in seconds that the connection is allowed to be idle"
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = var.idle_timeout >= 1 && var.idle_timeout <= 4000
+    error_message = "Idle timeout must be between 1 and 4000 seconds."
+  }
+}
+
 variable "target_port" {
   description = "Port the targets listen on"
   type        = number
@@ -78,6 +89,17 @@ variable "target_type" {
   }
 }
 
+variable "deregistration_delay" {
+  description = "Time in seconds before deregistering a draining target"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.deregistration_delay >= 0 && var.deregistration_delay <= 3600
+    error_message = "Deregistration delay must be between 0 and 3600 seconds."
+  }
+}
+
 variable "certificate_arn" {
   description = "ARN of the ACM certificate for HTTPS. If null, only HTTP listener is created."
   type        = string
@@ -88,6 +110,12 @@ variable "ssl_policy" {
   description = "SSL policy for the HTTPS listener"
   type        = string
   default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+}
+
+variable "waf_acl_arn" {
+  description = "ARN of the WAFv2 web ACL to associate with the ALB. If null, no WAF is attached."
+  type        = string
+  default     = null
 }
 
 variable "health_check_path" {

@@ -10,6 +10,8 @@ resource "aws_lb" "this" {
   subnets            = var.subnet_ids
 
   enable_deletion_protection = var.enable_deletion_protection
+  drop_invalid_header_fields = true
+  idle_timeout               = var.idle_timeout
 
   dynamic "access_logs" {
     for_each = var.access_logs_bucket != null ? [1] : []
@@ -32,11 +34,12 @@ resource "aws_lb" "this" {
 # -----------------------------------------------------------------------------
 
 resource "aws_lb_target_group" "default" {
-  name        = "${var.environment}-${var.name}-default"
-  port        = var.target_port
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = var.target_type
+  name                 = "${var.environment}-${var.name}-default"
+  port                 = var.target_port
+  protocol             = "HTTP"
+  vpc_id               = var.vpc_id
+  target_type          = var.target_type
+  deregistration_delay = var.deregistration_delay
 
   health_check {
     enabled             = true
@@ -58,7 +61,7 @@ resource "aws_lb_target_group" "default" {
 }
 
 # -----------------------------------------------------------------------------
-# HTTP Listener (redirect to HTTPS)
+# HTTP Listener (redirect to HTTPS when certificate provided)
 # -----------------------------------------------------------------------------
 
 resource "aws_lb_listener" "http" {
@@ -118,4 +121,15 @@ resource "aws_lb_listener" "https" {
     Environment = var.environment
     ManagedBy   = "opentofu"
   })
+}
+
+# -----------------------------------------------------------------------------
+# WAF Association (conditional)
+# -----------------------------------------------------------------------------
+
+resource "aws_wafv2_web_acl_association" "this" {
+  count = var.waf_acl_arn != null ? 1 : 0
+
+  resource_arn = aws_lb.this.arn
+  web_acl_arn  = var.waf_acl_arn
 }
