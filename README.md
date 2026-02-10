@@ -37,6 +37,7 @@ cloud-voyager-infra/
 │   │   ├── remote-state.md
 │   │   ├── cloudwatch-alarms.md
 │   │   ├── lambda.md
+│   │   ├── mcp-server.md
 │   │   └── vpc-endpoints.md
 │   └── infracost-setup.md           // CI cost estimation setup guide
 ├── infra/
@@ -49,6 +50,7 @@ cloud-voyager-infra/
 │   │   ├── remote_state/            // S3 + DynamoDB state backend
 │   │   ├── cloudwatch_alarms/       // SNS + alarms for observability
 │   │   ├── lambda/                  // FedRAMP-compliant Lambda functions
+│   │   ├── mcp_server/             // MCP server on Lambda + API Gateway
 │   │   └── vpc_endpoints/           // S3 + DynamoDB Gateway endpoints
 │   ├── main.tf                      // Root config — wires modules
 │   ├── variables.tf                 // Root-level variables
@@ -219,6 +221,22 @@ FedRAMP-compliant Lambda functions with KMS-encrypted environment variables, Clo
 
 [`> ACCESS DISC`](infra/modules/lambda/README.md)
 
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### `[MCP SERVER]`
+**AI Tool Integration Platform**
+
+Production-ready MCP server on Lambda with API Gateway v2, Cognito OAuth 2.0 auth, KMS encryption, CloudWatch alarms, optional ECR repository and DynamoDB session table.
+
+`FedRAMP: SC-7 · SC-8 · SC-28 · AC-6 · AU-2 · SI-4 · IA-2 · CM-7`
+
+[`> ACCESS DISC`](infra/modules/mcp_server/README.md)
+
+</td>
+<td width="50%" valign="top">
 </td>
 </tr>
 </table>
