@@ -1,0 +1,57 @@
+# =============================================================================
+# OpenTofu / Terraform
+# =============================================================================
+
+# Provider plugins and module cache
+.terraform/
+
+# State files — contain sensitive resource data, must never be committed
+*.tfstate
+*.tfstate.*
+
+# Variable definition files — may contain secrets
+# NOTE: *.tfvars.example files are NOT ignored and should be committed
+# as templates showing required variables without sensitive values.
+*.tfvars
+
+# Dependency lock file — ignored for now; revisit when provider pinning
+# matters for reproducibility. Remove this line to commit the lock file.
+.terraform.lock.hcl
+
+# OpenTofu / Terraform crash logs
+crash.log
+
+# Local override files — used for personal overrides, not shared
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# =============================================================================
+# Claude Code
+# =============================================================================
+
+# User-specific Claude Code settings (settings.json, etc.)
+.claude/
+
+# NOTE: CLAUDE.md is NOT ignored — it is a committed, shared project
+# conventions file that guides contributors and AI assistants.
+
+# =============================================================================
+# General
+# =============================================================================
+
+# macOS system files
+.DS_Store
+
+# Vim swap files
+*.swp
+*.swo
+
+# IDE / editor settings
+.idea/
+.vscode/
+
+# Environment files — may contain secrets, API keys, credentials
+*.env
+.env*
