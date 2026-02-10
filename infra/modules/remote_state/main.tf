@@ -144,6 +144,11 @@ resource "aws_dynamodb_table" "lock" {
     enabled = true
   }
 
+  server_side_encryption {
+    enabled     = true
+    kms_key_arn = var.kms_key_arn
+  }
+
   tags = merge(var.tags, {
     Name        = var.lock_table_name
     Environment = var.environment

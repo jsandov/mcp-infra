@@ -91,6 +91,7 @@ After applying, copy the `backend_config` output into your `versions.tf` and run
 - **Principal restriction**: Optional deny-all-except policy for named IAM principals
 - **Versioning**: All state files versioned for rollback capability
 - **Public access blocked**: All four public access block settings enabled
+- **DynamoDB encryption at rest**: AWS-managed key by default, or customer-managed KMS key when `kms_key_arn` is provided (FedRAMP SC-28)
 - **Point-in-time recovery**: DynamoDB PITR enabled for lock table disaster recovery
 - **Lifecycle management**: Noncurrent versions expire after configurable days (default 90)
 - **On-demand billing**: DynamoDB uses PAY_PER_REQUEST to avoid over-provisioning
