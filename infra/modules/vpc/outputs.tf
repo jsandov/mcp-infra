@@ -42,3 +42,13 @@ output "default_security_group_id" {
   description = "The ID of the default security group (deny-all)"
   value       = aws_default_security_group.this.id
 }
+
+output "flow_log_id" {
+  description = "The ID of the VPC Flow Log (null if flow logs are disabled)"
+  value       = try(aws_flow_log.this[0].id, null)
+}
+
+output "flow_log_group_name" {
+  description = "The CloudWatch Log Group name for VPC Flow Logs"
+  value       = try(aws_cloudwatch_log_group.flow_logs[0].name, null)
+}
