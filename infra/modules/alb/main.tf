@@ -36,7 +36,7 @@ resource "aws_lb" "this" {
 resource "aws_lb_target_group" "default" {
   name                 = "${var.environment}-${var.name}-default"
   port                 = var.target_port
-  protocol             = "HTTP"
+  protocol             = var.target_protocol
   vpc_id               = var.vpc_id
   target_type          = var.target_type
   deregistration_delay = var.deregistration_delay
@@ -48,7 +48,7 @@ resource "aws_lb_target_group" "default" {
     interval            = var.health_check_interval
     path                = var.health_check_path
     port                = "traffic-port"
-    protocol            = "HTTP"
+    protocol            = var.target_protocol
     timeout             = var.health_check_timeout
     matcher             = var.health_check_matcher
   }

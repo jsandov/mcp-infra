@@ -78,6 +78,17 @@ variable "target_port" {
   }
 }
 
+variable "target_protocol" {
+  description = "Protocol for the default target group and health check (HTTP or HTTPS)"
+  type        = string
+  default     = "HTTP"
+
+  validation {
+    condition     = contains(["HTTP", "HTTPS"], var.target_protocol)
+    error_message = "Target protocol must be one of: HTTP, HTTPS."
+  }
+}
+
 variable "target_type" {
   description = "Type of target (instance, ip, lambda, alb)"
   type        = string

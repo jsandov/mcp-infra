@@ -62,6 +62,7 @@ When a `certificate_arn` is provided, the HTTP listener automatically redirects 
 | `enable_deletion_protection`      | `bool`         | `false`                                  | no       | Prevent accidental ALB deletion             |
 | `idle_timeout`                    | `number`       | `60`                                     | no       | Idle connection timeout in seconds (1-4000) |
 | `target_port`                     | `number`       | `80`                                     | no       | Port targets listen on                      |
+| `target_protocol`                 | `string`       | `HTTP`                                   | no       | Target group and health check protocol      |
 | `target_type`                     | `string`       | `ip`                                     | no       | Target type (instance, ip, lambda, alb)     |
 | `deregistration_delay`            | `number`       | `30`                                     | no       | Seconds before deregistering targets (0-3600)|
 | `certificate_arn`                 | `string`       | `null`                                   | no       | ACM certificate ARN for HTTPS               |
