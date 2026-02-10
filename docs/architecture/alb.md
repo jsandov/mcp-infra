@@ -13,8 +13,8 @@ flowchart LR
     HTTPListener -->|"301 Redirect<br/>(when cert provided)"| HTTPSListener
     HTTPSListener --> TG
 
-    subgraph TG["Default Target Group"]
-        HC["Health Check<br/>Path: var.health_check_path<br/>Matcher: var.health_check_matcher"]
+    subgraph TG["Default Target Group<br/>Protocol: var.target_protocol"]
+        HC["Health Check<br/>Protocol: var.target_protocol<br/>Path: var.health_check_path<br/>Matcher: var.health_check_matcher"]
         Targets["Targets (ip/instance/lambda)"]
     end
 
@@ -27,5 +27,6 @@ flowchart LR
 - **TLS 1.3 by default**: Uses `ELBSecurityPolicy-TLS13-1-2-2021-06`
 - **HTTP→HTTPS redirect**: Automatic when `certificate_arn` is provided
 - **Drop invalid headers**: `drop_invalid_header_fields = true` prevents request smuggling
+- **Configurable target protocol**: `target_protocol` variable (HTTP or HTTPS) enables end-to-end encryption when backends support TLS
 - **Target type `ip`**: Default supports Fargate and container deployments
 - **Deletion protection**: Off by default for dev, enable for production

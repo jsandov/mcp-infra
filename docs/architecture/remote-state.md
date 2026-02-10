@@ -7,7 +7,7 @@ flowchart LR
 
     subgraph Backend["Remote State Backend"]
         S3["S3 Bucket<br/>Versioning: enabled<br/>Encryption: AES-256 or KMS<br/>Public access: blocked"]
-        DDB["DynamoDB Table<br/>Key: LockID<br/>Billing: PAY_PER_REQUEST<br/>PITR: enabled"]
+        DDB["DynamoDB Table<br/>Key: LockID<br/>Billing: PAY_PER_REQUEST<br/>PITR: enabled<br/>Encryption: SSE (KMS optional)"]
         BucketPolicy["Bucket Policy<br/>Deny non-SSL<br/>Optional principal restriction"]
     end
 
@@ -24,5 +24,6 @@ flowchart LR
 - **Versioning**: State files versioned for rollback capability
 - **Public access fully blocked**: All four S3 public access block settings enabled
 - **Point-in-time recovery**: DynamoDB PITR for lock table disaster recovery
+- **DynamoDB encryption**: Server-side encryption enabled with optional customer-managed KMS key
 - **PAY_PER_REQUEST**: Avoids DynamoDB capacity planning overhead
 - **Noncurrent version expiration**: Defaults to 90 days to limit storage cost
