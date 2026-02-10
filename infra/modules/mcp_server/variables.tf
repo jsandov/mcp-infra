@@ -75,6 +75,12 @@ variable "environment_variables" {
   default     = {}
 }
 
+variable "enable_tenant_isolation" {
+  description = "Enable Lambda tenant isolation mode for per-tenant Firecracker VM isolation (FedRAMP SC-7). Immutable after creation. Incompatible with provisioned concurrency."
+  type        = bool
+  default     = false
+}
+
 # ---------------------------------------------------------------------------
 # Networking
 # ---------------------------------------------------------------------------
@@ -113,6 +119,24 @@ variable "enable_auth" {
   default     = true
 }
 
+variable "cognito_user_pool_id" {
+  description = "ID of an external Cognito user pool to use instead of creating a new one. When set, enable_auth must also be true."
+  type        = string
+  default     = null
+}
+
+variable "cognito_user_pool_endpoint" {
+  description = "Endpoint of the external Cognito user pool (e.g., cognito-idp.us-east-1.amazonaws.com/us-east-1_xxx). Required when cognito_user_pool_id is set."
+  type        = string
+  default     = null
+}
+
+variable "cognito_client_id" {
+  description = "Client ID from the external Cognito user pool. Required when cognito_user_pool_id is set."
+  type        = string
+  default     = null
+}
+
 # ---------------------------------------------------------------------------
 # API
 # ---------------------------------------------------------------------------
@@ -149,6 +173,15 @@ variable "waf_acl_arn" {
   description = "ARN of the WAF v2 Web ACL to associate with the API Gateway stage"
   type        = string
   default     = null
+}
+
+variable "route_throttle_overrides" {
+  description = "Per-route throttling overrides for API Gateway routes. Keys are route keys (e.g., 'POST /mcp')."
+  type = map(object({
+    throttling_rate_limit  = number
+    throttling_burst_limit = number
+  }))
+  default = {}
 }
 
 # ---------------------------------------------------------------------------
