@@ -27,7 +27,6 @@
 
 ```text
 cloud-voyager-infra/
-├── CLAUDE.md                        // Project conventions & security practices
 ├── docs/
 │   ├── architecture/                // Per-module Mermaid diagrams
 │   │   ├── vpc.md
@@ -37,6 +36,7 @@ cloud-voyager-infra/
 │   │   ├── kms.md
 │   │   ├── remote-state.md
 │   │   ├── cloudwatch-alarms.md
+│   │   ├── lambda.md
 │   │   └── vpc-endpoints.md
 │   └── infracost-setup.md           // CI cost estimation setup guide
 ├── infra/
@@ -48,6 +48,7 @@ cloud-voyager-infra/
 │   │   ├── kms/                     // Customer-managed encryption keys
 │   │   ├── remote_state/            // S3 + DynamoDB state backend
 │   │   ├── cloudwatch_alarms/       // SNS + alarms for observability
+│   │   ├── lambda/                  // FedRAMP-compliant Lambda functions
 │   │   └── vpc_endpoints/           // S3 + DynamoDB Gateway endpoints
 │   ├── main.tf                      // Root config — wires modules
 │   ├── variables.tf                 // Root-level variables
@@ -209,7 +210,14 @@ GitHub Actions workflow: `tofu plan` + `tofu validate` + `tofu fmt` on every PR.
 </td>
 <td width="50%" valign="top">
 
-&nbsp;
+### `[LAMBDA]`
+**Serverless Compute**
+
+FedRAMP-compliant Lambda functions with KMS-encrypted environment variables, CloudWatch logs with retention, X-Ray tracing, optional VPC placement, and dead letter queues.
+
+`FedRAMP: SC-8 · SC-28 · AC-6 · AU-2 · SI-4`
+
+[`> ACCESS DISC`](infra/modules/lambda/README.md)
 
 </td>
 </tr>
@@ -268,8 +276,6 @@ See [Infracost Setup Guide](docs/infracost-setup.md) for configuring CI secrets.
 <br>
 
 ## `/// DIRECTIVES`
-
-See [CLAUDE.md](CLAUDE.md) for project conventions, security practices, and module authoring guidelines.
 
 See [docs/architecture/](docs/architecture/) for per-module architecture diagrams.
 
