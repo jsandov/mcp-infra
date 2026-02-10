@@ -15,6 +15,8 @@ Bootstrap the `mcp-infra` repository as an OpenTofu infrastructure-as-code proje
 
 ## Feature 1: CLAUDE.md — Project Conventions and Security Practices
 
+**Status: Complete** (PR #1, merged)
+
 ### Feature 1 Purpose
 
 Provide a committed project-level configuration file that guides contributors (and AI assistants) on best practices, coding standards, and security requirements for this IaC repo.
@@ -45,6 +47,8 @@ Provide a committed project-level configuration file that guides contributors (a
 
 ## Feature 2: .gitignore — Repository Hygiene
 
+**Status: Complete** (PR #2, merged)
+
 ### Feature 2 Purpose
 
 Prevent sensitive, generated, and user-specific files from being committed.
@@ -73,6 +77,8 @@ Prevent sensitive, generated, and user-specific files from being committed.
 ---
 
 ## Feature 3: Infrastructure Folder — OpenTofu + AWS
+
+**Status: Complete** (PR #3, merged)
 
 ### Feature 3 Purpose
 
@@ -116,6 +122,49 @@ Create the initial infrastructure directory structure with a VPC module as the f
 
 ---
 
+## Feature 4: GitHub Actions — OpenTofu Plan + Infracost
+
+**Status: In Progress**
+
+### Feature 4 Purpose
+
+Automate infrastructure validation and cost estimation on pull requests. Every PR that changes `infra/` files triggers `tofu plan` and posts an Infracost cost breakdown as a PR comment.
+
+### Feature 4 Requirements
+
+- **Workflow trigger**
+  - Pull requests targeting `main` only
+  - Path filter: only runs when `infra/**` files are changed
+
+- **OpenTofu Plan job**
+  - Set up OpenTofu v1.6.x via `opentofu/setup-opentofu@v1`
+  - Configure AWS credentials from GitHub secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
+  - Run `tofu init` in `infra/` directory
+  - Run `tofu fmt -check -recursive` (enforces CLAUDE.md convention)
+  - Run `tofu validate`
+  - Run `tofu plan` and capture output
+  - Post plan summary as a PR comment
+
+- **Infracost job**
+  - Set up Infracost via `infracost/actions/setup@v3`
+  - Parse HCL directly (no plan JSON needed)
+  - Generate baseline cost from `main` branch
+  - Generate current cost from PR branch
+  - Run `infracost diff` to compare
+  - Post cost breakdown as PR comment (behavior: `update`)
+
+- **Required GitHub secrets**
+  - `AWS_ACCESS_KEY_ID` — AWS credentials for `tofu plan`
+  - `AWS_SECRET_ACCESS_KEY` — AWS credentials for `tofu plan`
+  - `INFRACOST_API_KEY` — Infracost API authentication (free tier)
+
+- **Setup documentation**
+  - How to obtain a free Infracost API key
+  - How to configure all three GitHub secrets
+  - Recommended IAM policy for the CI user (read-only)
+
+---
+
 ## Module Versioning Strategy (Recommendation)
 
 ### Approach: Git Tags + Source URLs
@@ -149,22 +198,23 @@ This is the simplest approach that requires no additional infrastructure.
 
 ## Implementation Approach
 
-Each feature should be implemented on a **separate branch** using **git worktrees** for isolation. Use **parallel subagents** where tasks are independent:
+Each feature is implemented on a **separate branch** using **git worktrees** for isolation. Parallel subagents are used where tasks are independent:
 
-| Feature               | Branch               | Notes                          |
-| --------------------- | -------------------- | ------------------------------ |
-| CLAUDE.md             | `feature/claude-md`  | Can be developed independently |
-| .gitignore            | `feature/gitignore`  | Can be developed independently |
-| Infrastructure folder | `feature/infra-vpc`  | Can be developed independently |
-
-All three branches are independent and can be worked on in parallel using worktrees and subagents. Each branch should be merged to `main` via PR.
+| Feature                        | Branch                 | Status    |
+| ------------------------------ | ---------------------- | --------- |
+| CLAUDE.md                      | `feature/claude-md`    | Merged    |
+| .gitignore                     | `feature/gitignore`    | Merged    |
+| Infrastructure folder          | `feature/infra-vpc`    | Merged    |
+| Architecture diagram           | `feature/infra-diagram`| Merged    |
+| PRD update                     | `feature/prd-update`   | In Progress |
+| CI workflow + Infracost        | `feature/ci-infracost` | In Progress |
 
 ---
 
 ## Out of Scope (for now)
 
 - Remote state backend setup (S3 + DynamoDB)
-- CI/CD pipeline for `tofu plan` / `tofu apply`
+- `tofu apply` automation (CI runs plan only, apply is manual)
 - Additional AWS resources beyond VPC
 - Private module registry
 - Terratest or other IaC testing frameworks
@@ -173,8 +223,12 @@ All three branches are independent and can be worked on in parallel using worktr
 
 ## Success Criteria
 
-- [ ] `CLAUDE.md` committed with security and convention guidance
-- [ ] `.gitignore` covers all OpenTofu, Claude Code, and general patterns
-- [ ] `infra/` directory with working VPC module structure
-- [ ] `tofu fmt` and `tofu validate` pass on all `.tf` files
-- [ ] Module is consumable via git source URL pattern
+- [x] `CLAUDE.md` committed with security and convention guidance
+- [x] `.gitignore` covers all OpenTofu, Claude Code, and general patterns
+- [x] `infra/` directory with working VPC module structure
+- [x] `tofu fmt` and `tofu validate` pass on all `.tf` files
+- [x] Module is consumable via git source URL pattern
+- [x] Architecture diagram documents VPC topology
+- [ ] GitHub Actions workflow runs `tofu plan` on PRs
+- [ ] Infracost posts cost breakdown as PR comment
+- [ ] Setup documentation for required secrets and API keys
