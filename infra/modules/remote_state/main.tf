@@ -25,7 +25,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = var.kms_key_arn != null ? "aws:kms" : "AES256"
+      kms_master_key_id = var.kms_key_arn
     }
     bucket_key_enabled = true
   }
@@ -54,6 +55,69 @@ resource "aws_s3_bucket_lifecycle_configuration" "state" {
 }
 
 # -----------------------------------------------------------------------------
+# S3 Bucket Policy — enforce SSL and restrict access
+# -----------------------------------------------------------------------------
+
+resource "aws_s3_bucket_policy" "state" {
+  bucket = aws_s3_bucket.state.id
+
+  policy = data.aws_iam_policy_document.bucket_policy.json
+
+  depends_on = [aws_s3_bucket_public_access_block.state]
+}
+
+data "aws_iam_policy_document" "bucket_policy" {
+  # Deny any request that does not use SSL/TLS (FedRAMP SC-8)
+  statement {
+    sid    = "DenyNonSSLRequests"
+    effect = "Deny"
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    actions   = ["s3:*"]
+    resources = [
+      aws_s3_bucket.state.arn,
+      "${aws_s3_bucket.state.arn}/*"
+    ]
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+
+  # Restrict access to specific IAM principals (if provided)
+  dynamic "statement" {
+    for_each = length(var.allowed_principal_arns) > 0 ? [1] : []
+    content {
+      sid    = "RestrictToAllowedPrincipals"
+      effect = "Deny"
+
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+
+      actions   = ["s3:*"]
+      resources = [
+        aws_s3_bucket.state.arn,
+        "${aws_s3_bucket.state.arn}/*"
+      ]
+
+      condition {
+        test     = "StringNotLike"
+        variable = "aws:PrincipalArn"
+        values   = var.allowed_principal_arns
+      }
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
 # DynamoDB Table for State Locking
 # -----------------------------------------------------------------------------
 
@@ -65,6 +129,10 @@ resource "aws_dynamodb_table" "lock" {
   attribute {
     name = "LockID"
     type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = true
   }
 
   tags = merge(var.tags, {

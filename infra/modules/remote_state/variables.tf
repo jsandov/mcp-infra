@@ -35,6 +35,18 @@ variable "noncurrent_version_expiration_days" {
   }
 }
 
+variable "kms_key_arn" {
+  description = "ARN of a customer-managed KMS key for S3 encryption. If null, uses AES-256."
+  type        = string
+  default     = null
+}
+
+variable "allowed_principal_arns" {
+  description = "List of IAM principal ARNs allowed to access the state bucket. If empty, no principal restriction is applied."
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Additional tags to apply to all resources"
   type        = map(string)
