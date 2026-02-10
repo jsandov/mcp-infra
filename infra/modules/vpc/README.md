@@ -36,14 +36,15 @@ module "vpc" {
 
 | Name                      | Type           | Default | Required | Description                                              |
 | ------------------------- | -------------- | ------- | -------- | -------------------------------------------------------- |
-| `cidr_block`              | `string`       | —       | yes      | The CIDR block for the VPC                               |
-| `environment`             | `string`       | —       | yes      | Environment name for tagging (dev, staging, prod)        |
-| `public_subnet_cidrs`     | `list(string)` | —       | yes      | CIDR blocks for public subnets (one per AZ)              |
-| `private_subnet_cidrs`    | `list(string)` | —       | yes      | CIDR blocks for private subnets (one per AZ)             |
-| `availability_zones`      | `list(string)` | —       | yes      | AWS availability zones to deploy subnets into            |
+| `cidr_block`              | `string`       | ---       | yes      | The CIDR block for the VPC                               |
+| `environment`             | `string`       | ---       | yes      | Environment name for tagging (dev, staging, prod)        |
+| `public_subnet_cidrs`     | `list(string)` | ---       | yes      | CIDR blocks for public subnets (one per AZ)              |
+| `private_subnet_cidrs`    | `list(string)` | ---       | yes      | CIDR blocks for private subnets (one per AZ)             |
+| `availability_zones`      | `list(string)` | ---       | yes      | AWS availability zones to deploy subnets into            |
 | `enable_nat_gateway`      | `bool`         | `false` | no       | Whether to create a NAT Gateway for private subnets      |
 | `enable_flow_logs`        | `bool`         | `true`  | no       | Whether to enable VPC Flow Logs                          |
 | `flow_log_retention_days` | `number`       | `30`    | no       | Days to retain flow logs in CloudWatch                   |
+| `flow_log_kms_key_arn`    | `string`       | `null`  | no       | KMS key ARN for encrypting VPC Flow Logs                 |
 | `tags`                    | `map(string)`  | `{}`    | no       | Additional tags to apply to all resources                |
 
 ## Outputs

@@ -54,6 +54,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "state" {
   }
 }
 
+resource "aws_s3_bucket_logging" "state" {
+  count = var.access_logs_bucket != null ? 1 : 0
+
+  bucket = aws_s3_bucket.state.id
+
+  target_bucket = var.access_logs_bucket
+  target_prefix = var.access_logs_prefix
+}
+
 # -----------------------------------------------------------------------------
 # S3 Bucket Policy — enforce SSL and restrict access
 # -----------------------------------------------------------------------------

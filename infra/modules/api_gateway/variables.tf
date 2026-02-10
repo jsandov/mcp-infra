@@ -144,6 +144,11 @@ variable "vpc_link_security_group_ids" {
   description = "List of security group IDs for the VPC Link"
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = length(var.vpc_link_subnet_ids) == 0 || length(var.vpc_link_security_group_ids) > 0
+    error_message = "vpc_link_security_group_ids must be non-empty when vpc_link_subnet_ids is provided."
+  }
 }
 
 # -----------------------------------------------------------------------------

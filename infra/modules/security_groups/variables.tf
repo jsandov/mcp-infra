@@ -70,6 +70,23 @@ variable "bastion_allowed_cidrs" {
   }
 }
 
+variable "restrict_egress" {
+  description = "Whether to restrict egress to minimum required ports instead of allowing all outbound"
+  type        = bool
+  default     = false
+}
+
+variable "vpc_cidr_block" {
+  description = "CIDR block of the VPC (used for bastion SSH egress when restrict_egress is true)"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.vpc_cidr_block == "" || can(cidrhost(var.vpc_cidr_block, 0))
+    error_message = "Must be a valid IPv4 CIDR block or empty string."
+  }
+}
+
 variable "tags" {
   description = "Additional tags to apply to all resources"
   type        = map(string)

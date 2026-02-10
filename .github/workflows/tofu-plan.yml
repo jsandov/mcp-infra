@@ -159,9 +159,10 @@ jobs:
         working-directory: ${{ env.TF_ROOT }}
         continue-on-error: true
 
+      # Trivy v0.28.0 — pinned to prevent supply chain attacks via mutable tags
       - name: Run Trivy (tfsec)
         id: trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: config
           scan-ref: ${{ env.TF_ROOT }}
@@ -169,9 +170,10 @@ jobs:
           exit-code: 0
           severity: HIGH,CRITICAL
 
+      # Checkov v12.2.2 — pinned to prevent supply chain attacks via mutable tags
       - name: Run Checkov
         id: checkov
-        uses: bridgecrewio/checkov-action@v12
+        uses: bridgecrewio/checkov-action@v12.2.2
         with:
           directory: ${{ env.TF_ROOT }}
           quiet: true

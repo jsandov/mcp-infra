@@ -45,8 +45,9 @@ resource "aws_security_group_rule" "web_https_ingress" {
   security_group_id = aws_security_group.web[0].id
 }
 
+# Unrestricted egress (when restrict_egress = false)
 resource "aws_security_group_rule" "web_egress" {
-  count = var.create_web_sg ? 1 : 0
+  count = var.create_web_sg && !var.restrict_egress ? 1 : 0
 
   type              = "egress"
   from_port         = 0
@@ -54,6 +55,55 @@ resource "aws_security_group_rule" "web_egress" {
   protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
   description       = "Allow all outbound traffic"
+  security_group_id = aws_security_group.web[0].id
+}
+
+# Restrictive egress rules (when restrict_egress = true)
+resource "aws_security_group_rule" "web_egress_https" {
+  count = var.create_web_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow HTTPS outbound"
+  security_group_id = aws_security_group.web[0].id
+}
+
+resource "aws_security_group_rule" "web_egress_dns_udp" {
+  count = var.create_web_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 53
+  to_port           = 53
+  protocol          = "udp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow DNS (UDP) outbound"
+  security_group_id = aws_security_group.web[0].id
+}
+
+resource "aws_security_group_rule" "web_egress_dns_tcp" {
+  count = var.create_web_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 53
+  to_port           = 53
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow DNS (TCP) outbound"
+  security_group_id = aws_security_group.web[0].id
+}
+
+resource "aws_security_group_rule" "web_egress_ntp" {
+  count = var.create_web_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 123
+  to_port           = 123
+  protocol          = "udp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow NTP (UDP) outbound"
   security_group_id = aws_security_group.web[0].id
 }
 
@@ -92,8 +142,9 @@ resource "aws_security_group_rule" "app_from_web" {
   security_group_id        = aws_security_group.app[0].id
 }
 
+# Unrestricted egress (when restrict_egress = false)
 resource "aws_security_group_rule" "app_egress" {
-  count = var.create_app_sg ? 1 : 0
+  count = var.create_app_sg && !var.restrict_egress ? 1 : 0
 
   type              = "egress"
   from_port         = 0
@@ -101,6 +152,67 @@ resource "aws_security_group_rule" "app_egress" {
   protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
   description       = "Allow all outbound traffic"
+  security_group_id = aws_security_group.app[0].id
+}
+
+# Restrictive egress rules (when restrict_egress = true)
+resource "aws_security_group_rule" "app_egress_db" {
+  count = var.create_app_sg && var.create_db_sg && var.restrict_egress ? 1 : 0
+
+  type                     = "egress"
+  from_port                = var.db_port
+  to_port                  = var.db_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.db[0].id
+  description              = "Allow outbound to database tier on DB port"
+  security_group_id        = aws_security_group.app[0].id
+}
+
+resource "aws_security_group_rule" "app_egress_https" {
+  count = var.create_app_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow HTTPS outbound"
+  security_group_id = aws_security_group.app[0].id
+}
+
+resource "aws_security_group_rule" "app_egress_dns_udp" {
+  count = var.create_app_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 53
+  to_port           = 53
+  protocol          = "udp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow DNS (UDP) outbound"
+  security_group_id = aws_security_group.app[0].id
+}
+
+resource "aws_security_group_rule" "app_egress_dns_tcp" {
+  count = var.create_app_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 53
+  to_port           = 53
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow DNS (TCP) outbound"
+  security_group_id = aws_security_group.app[0].id
+}
+
+resource "aws_security_group_rule" "app_egress_ntp" {
+  count = var.create_app_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 123
+  to_port           = 123
+  protocol          = "udp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow NTP (UDP) outbound"
   security_group_id = aws_security_group.app[0].id
 }
 
@@ -139,8 +251,9 @@ resource "aws_security_group_rule" "db_from_app" {
   security_group_id        = aws_security_group.db[0].id
 }
 
+# Unrestricted egress (when restrict_egress = false)
 resource "aws_security_group_rule" "db_egress" {
-  count = var.create_db_sg ? 1 : 0
+  count = var.create_db_sg && !var.restrict_egress ? 1 : 0
 
   type              = "egress"
   from_port         = 0
@@ -148,6 +261,43 @@ resource "aws_security_group_rule" "db_egress" {
   protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
   description       = "Allow all outbound traffic"
+  security_group_id = aws_security_group.db[0].id
+}
+
+# Restrictive egress rules (when restrict_egress = true)
+resource "aws_security_group_rule" "db_egress_dns_udp" {
+  count = var.create_db_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 53
+  to_port           = 53
+  protocol          = "udp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow DNS (UDP) outbound"
+  security_group_id = aws_security_group.db[0].id
+}
+
+resource "aws_security_group_rule" "db_egress_dns_tcp" {
+  count = var.create_db_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 53
+  to_port           = 53
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow DNS (TCP) outbound"
+  security_group_id = aws_security_group.db[0].id
+}
+
+resource "aws_security_group_rule" "db_egress_ntp" {
+  count = var.create_db_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 123
+  to_port           = 123
+  protocol          = "udp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow NTP (UDP) outbound"
   security_group_id = aws_security_group.db[0].id
 }
 
@@ -186,8 +336,9 @@ resource "aws_security_group_rule" "bastion_ssh_ingress" {
   security_group_id = aws_security_group.bastion[0].id
 }
 
+# Unrestricted egress (when restrict_egress = false)
 resource "aws_security_group_rule" "bastion_egress" {
-  count = var.create_bastion_sg ? 1 : 0
+  count = var.create_bastion_sg && !var.restrict_egress ? 1 : 0
 
   type              = "egress"
   from_port         = 0
@@ -195,5 +346,54 @@ resource "aws_security_group_rule" "bastion_egress" {
   protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
   description       = "Allow all outbound traffic"
+  security_group_id = aws_security_group.bastion[0].id
+}
+
+# Restrictive egress rules (when restrict_egress = true)
+resource "aws_security_group_rule" "bastion_egress_ssh" {
+  count = var.create_bastion_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = [var.vpc_cidr_block]
+  description       = "Allow SSH outbound to VPC"
+  security_group_id = aws_security_group.bastion[0].id
+}
+
+resource "aws_security_group_rule" "bastion_egress_dns_udp" {
+  count = var.create_bastion_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 53
+  to_port           = 53
+  protocol          = "udp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow DNS (UDP) outbound"
+  security_group_id = aws_security_group.bastion[0].id
+}
+
+resource "aws_security_group_rule" "bastion_egress_dns_tcp" {
+  count = var.create_bastion_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 53
+  to_port           = 53
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow DNS (TCP) outbound"
+  security_group_id = aws_security_group.bastion[0].id
+}
+
+resource "aws_security_group_rule" "bastion_egress_ntp" {
+  count = var.create_bastion_sg && var.restrict_egress ? 1 : 0
+
+  type              = "egress"
+  from_port         = 123
+  to_port           = 123
+  protocol          = "udp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow NTP (UDP) outbound"
   security_group_id = aws_security_group.bastion[0].id
 }

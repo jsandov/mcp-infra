@@ -150,6 +150,12 @@ data "aws_iam_policy_document" "key_policy" {
         "kms:ReEncrypt*"
       ]
       resources = ["*"]
+
+      condition {
+        test     = "StringEquals"
+        variable = "kms:CallerAccount"
+        values   = [data.aws_caller_identity.current.account_id]
+      }
     }
   }
 }
