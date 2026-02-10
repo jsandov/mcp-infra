@@ -1,82 +1,191 @@
 # MCP Server Architecture
 
+## 1. Request Flow
+
+The primary request path from MCP client to Lambda function.
+
 ```mermaid
-flowchart TB
-    Client(["MCP Client<br/>(Claude Code, IDE, etc.)"])
+flowchart LR
+    Client(["MCP Client"])
+    WAF["WAF v2<br/>(optional)"]
+    APIGW["API Gateway v2<br/>HTTP API"]
+    Lambda["Lambda Function<br/>(Container Image)"]
 
-    subgraph AWS["AWS Region (var.aws_region)"]
+    Client -->|"HTTPS POST/GET/DELETE /mcp<br/>JSON-RPC 2.0"| WAF
+    WAF --> APIGW
+    APIGW -->|"AWS_PROXY<br/>payload v2.0"| Lambda
+```
 
-        subgraph Auth["Authentication (conditional)"]
-            CognitoInt["Internal Cognito User Pool<br/><i>aws_cognito_user_pool.this</i><br/>OAuth 2.0 client_credentials"]
-            CognitoExt["External Cognito User Pool<br/><i>var.cognito_user_pool_id</i><br/>Centralized identity plane"]
-        end
+**Route mapping** (MCP spec 2025-03-26):
 
-        subgraph Edge["Edge Protection"]
-            WAF["WAF v2 Web ACL<br/>(conditional)"]
-            APIGW["API Gateway v2 HTTP API<br/><i>aws_apigatewayv2_api.this</i><br/>POST /mcp | GET /mcp | DELETE /mcp<br/>Per-route throttle overrides"]
-            APIStageLogs["Access Logs<br/><i>aws_cloudwatch_log_group.api</i>"]
-        end
+| Route | Purpose |
+| --- | --- |
+| `POST /mcp` | JSON-RPC requests and notifications |
+| `GET /mcp` | SSE streaming endpoint |
+| `DELETE /mcp` | Session termination |
 
-        subgraph VPC["VPC — var.vpc_id"]
-            subgraph PrivateSubnets["Private Subnets — var.vpc_subnet_ids"]
-                Lambda["Lambda Function<br/><i>aws_lambda_function.this</i><br/>Container Image | VPC | X-Ray"]
-                subgraph TenantIsolation["Tenant Isolation (conditional, SC-7)"]
-                    FC1["Firecracker VM<br/>Tenant A"]
-                    FC2["Firecracker VM<br/>Tenant B"]
-                    FCn["Firecracker VM<br/>Tenant N"]
-                end
-            end
-            SG["Security Groups<br/>var.vpc_security_group_ids"]
-        end
+---
 
-        subgraph Encryption["Encryption (SC-28)"]
-            KMS["KMS Customer Key<br/>var.kms_key_arn"]
-        end
+## 2. Authentication
 
-        subgraph Storage["Storage (conditional)"]
-            ECR["ECR Repository<br/><i>aws_ecr_repository.this</i><br/>KMS | Immutable Tags | Scan"]
-            DDB["DynamoDB Sessions<br/><i>aws_dynamodb_table.sessions</i><br/>PAY_PER_REQUEST | TTL | PITR<br/>Composite key: tenant_id + session_id"]
-        end
+Cognito JWT authorization with internal or external user pools.
 
-        subgraph Observability["Monitoring (SI-4)"]
-            CWLogs["CloudWatch Logs<br/><i>aws_cloudwatch_log_group.lambda</i><br/>KMS Encrypted"]
-            XRay["X-Ray Tracing"]
-            Alarms["CloudWatch Alarms (5)<br/>Errors | Duration | Throttles<br/>5xx | Latency"]
-            SNS["SNS Topic<br/><i>aws_sns_topic.alarms</i><br/>KMS Encrypted"]
-        end
+```mermaid
+flowchart LR
+    Client(["MCP Client"])
 
-        IAM["IAM Role<br/><i>aws_iam_role.lambda</i><br/>Least Privilege (AC-6)"]
+    subgraph Cognito["Cognito (choose one)"]
+        Internal["Internal Pool<br/><i>aws_cognito_user_pool.this</i><br/>Created by module"]
+        External["External Pool<br/><i>var.cognito_user_pool_id</i><br/>Bring your own"]
     end
 
-    Client -->|"HTTPS POST<br/>JSON-RPC 2.0"| WAF
-    WAF --> APIGW
-    Client -.->|"JWT Token"| CognitoInt
-    Client -.->|"JWT Token<br/>(external pool)"| CognitoExt
-    CognitoInt -.->|"Authorizer"| APIGW
-    CognitoExt -.->|"Authorizer<br/>(dashed = external)"| APIGW
-    APIGW -->|"AWS_PROXY"| Lambda
-    APIGW --> APIStageLogs
+    Authorizer["JWT Authorizer<br/><i>aws_apigatewayv2_authorizer</i><br/>scope: mcp/invoke"]
+    APIGW["API Gateway v2"]
 
-    Lambda -->|"tenant isolation"| TenantIsolation
-    Lambda --> CWLogs
-    Lambda --> XRay
-    Lambda -.->|"session state<br/>(tenant_id + session_id)"| DDB
-    Lambda -.->|"assumes"| IAM
+    Client -->|"client_credentials<br/>grant"| Cognito
+    Cognito -->|"JWT access token"| Client
+    Client -->|"Authorization: Bearer"| APIGW
+    APIGW --> Authorizer
+    Internal -.->|"issuer + audience"| Authorizer
+    External -.->|"issuer + audience"| Authorizer
+```
 
-    ECR -.->|"image source"| Lambda
+- **Internal pool**: Module creates Cognito user pool, domain, resource server, and client. Best for standalone deployments.
+- **External pool**: Set `cognito_user_pool_id`, `cognito_user_pool_endpoint`, and `cognito_client_id`. Best for centralized identity planes.
 
+---
+
+## 3. Multi-Tenant Isolation
+
+Hardware-level tenant isolation via Firecracker VMs and data partitioning.
+
+```mermaid
+flowchart TB
+    APIGW["API Gateway v2<br/>Per-route throttle overrides"]
+
+    subgraph Lambda["Lambda Function (enable_tenant_isolation = true)"]
+        direction LR
+        FCA["Firecracker VM<br/>Tenant A"]
+        FCB["Firecracker VM<br/>Tenant B"]
+        FCN["Firecracker VM<br/>Tenant N"]
+    end
+
+    subgraph DDB["DynamoDB Sessions"]
+        direction TB
+        TA["tenant_id=A | session_id=s1"]
+        TB["tenant_id=B | session_id=s2"]
+        TN["tenant_id=N | session_id=s3"]
+    end
+
+    GSI["GSI: session-id-index<br/>Hash: session_id"]
+
+    APIGW -->|"tenant-id in JWT"| Lambda
+    FCA -->|"scoped writes"| TA
+    FCB -->|"scoped writes"| TB
+    FCN -->|"scoped writes"| TN
+    DDB --- GSI
+```
+
+- **Lambda**: `TenancyConfig.TenantIsolationMode = PER_TENANT` -- each tenant gets a dedicated Firecracker micro-VM. Immutable after creation.
+- **DynamoDB**: Composite key `tenant_id` (hash) + `session_id` (range) enables `dynamodb:LeadingKeys` IAM conditions for row-level isolation.
+- **API Gateway**: `route_throttle_overrides` map applies per-route rate/burst limits for noisy neighbor protection.
+
+---
+
+## 4. Encryption
+
+Single KMS key encrypts all data at rest (SC-28).
+
+```mermaid
+flowchart TB
+    KMS["KMS Customer Key<br/><i>var.kms_key_arn</i>"]
+
+    LambdaEnv["Lambda Env Vars"]
+    CWLogs["CloudWatch Logs<br/>(Lambda + API)"]
+    DDB["DynamoDB Sessions"]
+    ECR["ECR Repository"]
+    SNS["SNS Alarm Topic"]
+
+    KMS -.->|"encrypts"| LambdaEnv
     KMS -.->|"encrypts"| CWLogs
-    KMS -.->|"encrypts"| Lambda
     KMS -.->|"encrypts"| DDB
     KMS -.->|"encrypts"| ECR
     KMS -.->|"encrypts"| SNS
-    KMS -.->|"encrypts"| APIStageLogs
-
-    SG -.->|"controls"| Lambda
-
-    Alarms -->|"notifications"| SNS
-    CWLogs -.->|"metrics"| Alarms
 ```
+
+---
+
+## 5. Observability
+
+CloudWatch alarms, X-Ray tracing, and structured logging.
+
+```mermaid
+flowchart LR
+    Lambda["Lambda Function"]
+    APIGW["API Gateway v2"]
+
+    CWLambda["CloudWatch Logs<br/>/aws/lambda/..."]
+    CWAPI["CloudWatch Logs<br/>/aws/apigateway/..."]
+    XRay["X-Ray Tracing"]
+
+    subgraph Alarms["CloudWatch Alarms (5)"]
+        A1["Lambda Errors"]
+        A2["Lambda Duration p99"]
+        A3["Lambda Throttles"]
+        A4["API 5xx Errors"]
+        A5["API Latency p99"]
+    end
+
+    SNS["SNS Topic"]
+
+    Lambda --> CWLambda
+    Lambda --> XRay
+    APIGW --> CWAPI
+    CWLambda -.->|"metrics"| Alarms
+    CWAPI -.->|"metrics"| Alarms
+    Alarms -->|"notifications"| SNS
+```
+
+| Alarm | Metric | Threshold |
+| --- | --- | --- |
+| Lambda Errors | `Errors` Sum | > 5 per 5 min |
+| Lambda Duration p99 | `Duration` p99 | > 80% of timeout |
+| Lambda Throttles | `Throttles` Sum | > 5 per 5 min |
+| API 5xx | `5xx` Sum | > 10 per 5 min |
+| API Latency p99 | `Latency` p99 | > 90% of timeout |
+
+---
+
+## 6. Network & IAM
+
+VPC placement and least-privilege IAM.
+
+```mermaid
+flowchart TB
+    subgraph VPC["VPC -- var.vpc_id"]
+        subgraph Subnets["Private Subnets"]
+            Lambda["Lambda Function"]
+        end
+        SG["Security Groups<br/><i>var.vpc_security_group_ids</i>"]
+    end
+
+    IAM["IAM Role<br/><i>aws_iam_role.lambda</i>"]
+
+    SG -.->|"ingress/egress rules"| Lambda
+    Lambda -.->|"assumes"| IAM
+
+    subgraph Policies["Attached Policies"]
+        P1["AWSLambdaBasicExecutionRole"]
+        P2["AWSLambdaVPCAccessExecutionRole"]
+        P3["AWSXRayDaemonWriteAccess"]
+        P4["KMS: Decrypt, DescribeKey, GenerateDataKey"]
+        P5["DynamoDB: GetItem, PutItem, UpdateItem, DeleteItem, Query"]
+    end
+
+    IAM --- Policies
+```
+
+---
 
 ## FedRAMP Control Mapping
 
