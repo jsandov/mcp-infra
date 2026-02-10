@@ -8,7 +8,7 @@ Provides configurable CloudWatch metric alarms for FedRAMP SI-4 continuous monit
 
 ```hcl
 module "alarms" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/cloudwatch_alarms?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/cloudwatch_alarms?ref=v1.0.0"
 
   name        = "my-app"
   environment = "prod"
@@ -29,7 +29,7 @@ module "alarms" {
 
 ```hcl
 module "alarms" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/cloudwatch_alarms?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/cloudwatch_alarms?ref=v1.0.0"
 
   name        = "my-app"
   environment = "prod"

@@ -10,7 +10,7 @@ Aligned with **AWS Well-Architected Framework** Security Pillar and **FedRAMP** 
 
 ```hcl
 module "api_gateway" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/api_gateway?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/api_gateway?ref=v1.0.0"
 
   name        = "my-api"
   environment = "dev"
@@ -25,7 +25,7 @@ module "api_gateway" {
 
 ```hcl
 module "api_gateway" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/api_gateway?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/api_gateway?ref=v1.0.0"
 
   name        = "my-api"
   description = "Production API for my-service"
@@ -57,7 +57,7 @@ module "api_gateway" {
 
 ```hcl
 module "api_gateway" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/api_gateway?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/api_gateway?ref=v1.0.0"
 
   name        = "internal-api"
   environment = "prod"

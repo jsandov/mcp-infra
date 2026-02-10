@@ -10,7 +10,7 @@ Aligned with **FedRAMP** controls SC-12 (Key Management), SC-13 (Cryptographic P
 
 ```hcl
 module "kms" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/kms?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/kms?ref=v1.0.0"
 
   alias_name  = "infra-encryption"
   environment = "prod"
@@ -25,7 +25,7 @@ module "kms" {
 
 ```hcl
 module "kms_logs" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/kms?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/kms?ref=v1.0.0"
 
   alias_name                    = "logs-encryption"
   description                   = "KMS key for CloudWatch Logs encryption"
@@ -42,7 +42,7 @@ module "kms_logs" {
 
 ```hcl
 module "kms_state" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/kms?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/kms?ref=v1.0.0"
 
   alias_name      = "state-encryption"
   description     = "KMS key for Terraform state encryption"

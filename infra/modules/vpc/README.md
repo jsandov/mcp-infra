@@ -6,7 +6,7 @@ Creates an AWS VPC with public and private subnets across multiple availability 
 
 ```hcl
 module "vpc" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/vpc?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/vpc?ref=v1.0.0"
 
   cidr_block         = "10.0.0.0/16"
   environment        = "dev"

@@ -23,6 +23,6 @@ module "vpc" {
   ]
 
   tags = {
-    Project = "mcp-infra"
+    Project = "cloud-voyager-infra"
   }
 }

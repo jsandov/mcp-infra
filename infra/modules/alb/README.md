@@ -8,7 +8,7 @@ Creates an Application Load Balancer with HTTP and optional HTTPS listeners, a d
 
 ```hcl
 module "alb" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/alb?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/alb?ref=v1.0.0"
 
   environment        = "dev"
   vpc_id             = module.vpc.vpc_id
@@ -26,7 +26,7 @@ module "alb" {
 
 ```hcl
 module "alb" {
-  source = "git::https://github.com/<org>/mcp-infra.git//infra/modules/alb?ref=v1.0.0"
+  source = "git::https://github.com/jsandov/cloud-voyager-infra.git//infra/modules/alb?ref=v1.0.0"
 
   environment        = "prod"
   vpc_id             = module.vpc.vpc_id
