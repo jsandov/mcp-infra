@@ -1,0 +1,158 @@
+name: OpenTofu Plan + Infracost
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "infra/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  TF_ROOT: infra
+  TOFU_VERSION: "1.6.x"
+
+jobs:
+  tofu-plan:
+    name: OpenTofu Plan
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: OpenTofu Format Check
+        id: fmt
+        run: tofu fmt -check -recursive
+        working-directory: ${{ env.TF_ROOT }}
+        continue-on-error: true
+
+      - name: OpenTofu Init
+        id: init
+        run: tofu init
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: OpenTofu Validate
+        id: validate
+        run: tofu validate -no-color
+        working-directory: ${{ env.TF_ROOT }}
+
+      - name: OpenTofu Plan
+        id: plan
+        run: tofu plan -no-color -input=false 2>&1 | tee /tmp/plan-output.txt
+        working-directory: ${{ env.TF_ROOT }}
+        continue-on-error: true
+
+      - name: Post Plan to PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('/tmp/plan-output.txt', 'utf8');
+            const truncated = planOutput.length > 60000
+              ? planOutput.substring(0, 60000) + '\n... (truncated)'
+              : planOutput;
+
+            const body = `## OpenTofu Plan Results
+
+            | Step | Status |
+            | --- | --- |
+            | Format | \`${{ steps.fmt.outcome }}\` |
+            | Init | \`${{ steps.init.outcome }}\` |
+            | Validate | \`${{ steps.validate.outcome }}\` |
+            | Plan | \`${{ steps.plan.outcome }}\` |
+
+            <details><summary>Show Plan Output</summary>
+
+            \`\`\`hcl
+            ${truncated}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('OpenTofu Plan Results')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }
+
+      - name: Fail on plan error
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  infracost:
+    name: Infracost Cost Estimation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate Infracost baseline
+        run: |
+          infracost breakdown \
+            --path=${{ env.TF_ROOT }} \
+            --format=json \
+            --out-file=/tmp/infracost-base.json
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      - name: Generate Infracost diff
+        run: |
+          infracost diff \
+            --path=${{ env.TF_ROOT }} \
+            --format=json \
+            --compare-to=/tmp/infracost-base.json \
+            --out-file=/tmp/infracost.json
+
+      - name: Post Infracost comment
+        run: |
+          infracost comment github \
+            --path=/tmp/infracost.json \
+            --repo=$GITHUB_REPOSITORY \
+            --github-token=${{ github.token }} \
+            --pull-request=${{ github.event.pull_request.number }} \
+            --behavior=update
