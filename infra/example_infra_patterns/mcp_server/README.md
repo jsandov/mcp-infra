@@ -59,7 +59,8 @@ module "mcp_server" {
   vpc_subnet_ids         = module.vpc.private_subnet_ids
   vpc_security_group_ids = [module.vpc.lambda_security_group_id]
 
-  kms_key_arn = module.kms.key_arn
+  # Omit kms_key_arn for dev — uses AWS-managed encryption (no KMS cost)
+  # Set kms_key_arn = module.kms.key_arn for FedRAMP environments
 
   # Disable auth for local development
   enable_auth = false
@@ -219,7 +220,7 @@ module "metering" {
 | `vpc_id` | ID of the VPC where the Lambda function will run | `string` | n/a | yes |
 | `vpc_subnet_ids` | List of private subnet IDs for the Lambda function VPC configuration | `list(string)` | n/a | yes |
 | `vpc_security_group_ids` | List of security group IDs for the Lambda function VPC configuration | `list(string)` | n/a | yes |
-| `kms_key_arn` | ARN of the KMS key used to encrypt environment variables, logs, and data at rest | `string` | n/a | yes |
+| `kms_key_arn` | ARN of a customer-managed KMS key. When null, uses AWS-managed encryption (lower cost). Required for FedRAMP. | `string` | `null` | no |
 | `enable_auth` | Enable Cognito JWT authentication for the API Gateway (FedRAMP IA-2) | `bool` | `true` | no |
 | `enable_tenant_isolation` | Enable Lambda tenant isolation mode for per-tenant Firecracker VM isolation (FedRAMP SC-7) | `bool` | `false` | no |
 | `cognito_user_pool_id` | ID of an external Cognito user pool (skips creating internal pool) | `string` | `null` | no |
