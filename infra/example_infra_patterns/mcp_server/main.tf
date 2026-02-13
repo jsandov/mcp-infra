@@ -263,6 +263,13 @@ resource "aws_lambda_function" "this" {
     }
   }
 
+  dynamic "dead_letter_config" {
+    for_each = var.dead_letter_target_arn != null ? [1] : []
+    content {
+      target_arn = var.dead_letter_target_arn
+    }
+  }
+
   dynamic "environment" {
     for_each = length(local.lambda_environment_variables) > 0 ? [1] : []
     content {
@@ -292,6 +299,10 @@ resource "aws_apigatewayv2_api" "this" {
   }
 
   tags = local.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -311,6 +322,8 @@ resource "aws_apigatewayv2_stage" "default" {
       protocol                = "$context.protocol"
       responseLength          = "$context.responseLength"
       integrationErrorMessage = "$context.integrationErrorMessage"
+      authorizer_claims_sub   = "$context.authorizer.claims.sub"
+      authorizer_claims_tid   = "$context.authorizer.claims.custom:tenant_id"
     })
   }
 
@@ -431,6 +444,10 @@ resource "aws_ecr_repository" "this" {
   }
 
   tags = local.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_ecr_lifecycle_policy" "this" {
@@ -518,7 +535,13 @@ resource "aws_dynamodb_table" "sessions" {
     kms_key_arn = var.kms_key_arn
   }
 
+  deletion_protection_enabled = var.environment == "prod"
+
   tags = local.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -630,6 +653,30 @@ resource "aws_cloudwatch_metric_alarm" "api_5xx" {
   tags = merge(local.tags, { FedRAMP = "SI-4" })
 }
 
+# API Gateway 4xx errors alarm (SI-4)
+resource "aws_cloudwatch_metric_alarm" "api_4xx" {
+  alarm_name          = "${local.name_prefix}-mcp-api-4xx"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "4xx"
+  namespace           = "AWS/ApiGateway"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 100
+  alarm_description   = "API Gateway 4xx error rate exceeded threshold (FedRAMP SI-4)"
+  treat_missing_data  = "notBreaching"
+  actions_enabled     = var.alarm_actions_enabled
+
+  dimensions = {
+    ApiId = aws_apigatewayv2_api.this.id
+  }
+
+  alarm_actions = compact([local.alarm_sns_topic_arn])
+  ok_actions    = compact([local.alarm_sns_topic_arn])
+
+  tags = merge(local.tags, { FedRAMP = "SI-4" })
+}
+
 # API Gateway latency p99 alarm (SI-4)
 resource "aws_cloudwatch_metric_alarm" "api_latency" {
   alarm_name          = "${local.name_prefix}-mcp-api-latency-p99"
@@ -652,4 +699,77 @@ resource "aws_cloudwatch_metric_alarm" "api_latency" {
   ok_actions    = compact([local.alarm_sns_topic_arn])
 
   tags = merge(local.tags, { FedRAMP = "SI-4" })
+}
+
+# Lambda ConcurrentExecutions alarm (SI-4)
+resource "aws_cloudwatch_metric_alarm" "lambda_concurrent" {
+  alarm_name          = "${local.name_prefix}-mcp-lambda-concurrent"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "ConcurrentExecutions"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Maximum"
+  threshold           = var.reserved_concurrent_executions > 0 ? var.reserved_concurrent_executions * 0.8 : 900
+  alarm_description   = "Lambda concurrent executions approaching limit (FedRAMP SI-4)"
+  treat_missing_data  = "notBreaching"
+  actions_enabled     = var.alarm_actions_enabled
+
+  dimensions = {
+    FunctionName = aws_lambda_function.this.function_name
+  }
+
+  alarm_actions = compact([local.alarm_sns_topic_arn])
+  ok_actions    = compact([local.alarm_sns_topic_arn])
+
+  tags = merge(local.tags, { FedRAMP = "SI-4" })
+}
+
+# DynamoDB ThrottledRequests alarm (SI-4)
+resource "aws_cloudwatch_metric_alarm" "dynamodb_throttle" {
+  count = var.enable_session_table ? 1 : 0
+
+  alarm_name          = "${local.name_prefix}-mcp-dynamodb-throttle"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "ThrottledRequests"
+  namespace           = "AWS/DynamoDB"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 5
+  alarm_description   = "DynamoDB table throttling detected (FedRAMP SI-4)"
+  treat_missing_data  = "notBreaching"
+  actions_enabled     = var.alarm_actions_enabled
+
+  dimensions = {
+    TableName = aws_dynamodb_table.sessions[0].name
+  }
+
+  alarm_actions = compact([local.alarm_sns_topic_arn])
+  ok_actions    = compact([local.alarm_sns_topic_arn])
+
+  tags = merge(local.tags, { FedRAMP = "SI-4" })
+}
+
+# ---------------------------------------------------------------------------
+# SNS Email Subscription (IR-4)
+# ---------------------------------------------------------------------------
+
+resource "aws_sns_topic_subscription" "email" {
+  count = var.alarm_notification_email != null && var.alarm_sns_topic_arn == null ? 1 : 0
+
+  topic_arn = aws_sns_topic.alarms[0].arn
+  protocol  = "email"
+  endpoint  = var.alarm_notification_email
+}
+
+# ---------------------------------------------------------------------------
+# Production Safety Check (IA-2)
+# ---------------------------------------------------------------------------
+
+check "auth_enabled_in_prod" {
+  assert {
+    condition     = !(var.environment == "prod" && !var.enable_auth)
+    error_message = "WARNING: Authentication is disabled in production. This violates FedRAMP IA-2."
+  }
 }

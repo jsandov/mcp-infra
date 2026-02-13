@@ -164,9 +164,13 @@ variable "throttle_burst_limit" {
 }
 
 variable "cors_allowed_origins" {
-  description = "List of allowed CORS origins for the API Gateway"
+  description = "List of allowed CORS origins for the API Gateway. Must be explicitly set — wildcard '*' is not permitted."
   type        = list(string)
-  default     = ["*"]
+
+  validation {
+    condition     = !contains(var.cors_allowed_origins, "*")
+    error_message = "CORS wildcard '*' is not permitted. Specify explicit origins (e.g., ['https://app.example.com'])."
+  }
 }
 
 variable "route_throttle_overrides" {
@@ -260,4 +264,16 @@ variable "alarm_actions_enabled" {
   description = "Enable alarm actions for CloudWatch metric alarms"
   type        = bool
   default     = true
+}
+
+variable "alarm_notification_email" {
+  description = "Email address for SNS alarm notifications. Required to ensure alarms are actionable (FedRAMP IR-4)."
+  type        = string
+  default     = null
+}
+
+variable "dead_letter_target_arn" {
+  description = "ARN of an SQS queue or SNS topic for failed async Lambda invocations. Recommended for production."
+  type        = string
+  default     = null
 }

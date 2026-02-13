@@ -71,9 +71,9 @@ resource "aws_iam_policy" "tenant_permission_boundary" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowedTenantActions"
-        Effect = "Allow"
-        Action = var.allowed_actions
+        Sid      = "AllowedTenantActions"
+        Effect   = "Allow"
+        Action   = var.allowed_actions
         Resource = ["*"]
         Condition = {
           StringEquals = {
