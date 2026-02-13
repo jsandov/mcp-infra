@@ -32,7 +32,7 @@ variable "enable_s3_endpoint" {
 variable "enable_dynamodb_endpoint" {
   description = "Whether to create a DynamoDB Gateway VPC Endpoint"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "s3_endpoint_policy" {
@@ -45,6 +45,54 @@ variable "dynamodb_endpoint_policy" {
   description = "IAM policy document for the DynamoDB endpoint. If null, allows full DynamoDB access within the VPC."
   type        = string
   default     = null
+}
+
+variable "subnet_ids" {
+  description = "List of subnet IDs for Interface VPC Endpoints"
+  type        = list(string)
+  default     = []
+}
+
+variable "security_group_ids" {
+  description = "List of security group IDs for Interface VPC Endpoints"
+  type        = list(string)
+  default     = []
+}
+
+variable "enable_sts_endpoint" {
+  description = "Whether to create an STS Interface VPC Endpoint (required for Lambda VPC + STS AssumeRole)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_kms_endpoint" {
+  description = "Whether to create a KMS Interface VPC Endpoint (required for Lambda VPC + KMS encryption)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_logs_endpoint" {
+  description = "Whether to create a CloudWatch Logs Interface VPC Endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_ecr_api_endpoint" {
+  description = "Whether to create an ECR API Interface VPC Endpoint (required for container image pulls without NAT)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_ecr_dkr_endpoint" {
+  description = "Whether to create an ECR Docker Interface VPC Endpoint (required for container image pulls without NAT)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_xray_endpoint" {
+  description = "Whether to create an X-Ray Interface VPC Endpoint"
+  type        = bool
+  default     = false
 }
 
 variable "tags" {

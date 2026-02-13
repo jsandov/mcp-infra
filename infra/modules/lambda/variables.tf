@@ -152,6 +152,23 @@ variable "function_url_auth_type" {
   }
 }
 
+variable "architectures" {
+  description = "CPU architecture for the Lambda function. Use arm64 for Graviton (35% cost savings)."
+  type        = list(string)
+  default     = ["x86_64"]
+
+  validation {
+    condition     = length(var.architectures) == 1 && contains(["x86_64", "arm64"], var.architectures[0])
+    error_message = "Architectures must be a single-element list containing either x86_64 or arm64."
+  }
+}
+
+variable "publish" {
+  description = "Whether to publish a new Lambda version on each update (required for aliases and provisioned concurrency)"
+  type        = bool
+  default     = false
+}
+
 variable "environment" {
   description = "Environment name used for tagging and resource naming (e.g., dev, staging, prod)"
   type        = string

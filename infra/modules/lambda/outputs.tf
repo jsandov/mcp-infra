@@ -38,6 +38,11 @@ output "log_group_arn" {
   value       = aws_cloudwatch_log_group.this.arn
 }
 
+output "version" {
+  description = "The published version of the Lambda function (null if publish is false)"
+  value       = var.publish ? aws_lambda_function.this.version : null
+}
+
 output "function_url" {
   description = "The Lambda function URL for direct HTTPS invocation (null if disabled)"
   value       = try(aws_lambda_function_url.this[0].function_url, null)

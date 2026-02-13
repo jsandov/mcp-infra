@@ -225,3 +225,71 @@ variable "vpc_rejected_evaluation_periods" {
   type        = number
   default     = 3
 }
+
+# -----------------------------------------------------------------------------
+# Lambda Variables
+# -----------------------------------------------------------------------------
+
+variable "lambda_function_name" {
+  description = "Lambda function name (required when Lambda alarms are enabled)"
+  type        = string
+  default     = ""
+}
+
+variable "enable_lambda_concurrent_alarm" {
+  description = "Enable the Lambda ConcurrentExecutions alarm"
+  type        = bool
+  default     = false
+}
+
+variable "lambda_concurrent_threshold" {
+  description = "Number of concurrent executions to trigger the alarm"
+  type        = number
+  default     = 900
+}
+
+variable "lambda_concurrent_period" {
+  description = "Period in seconds over which the Lambda concurrent executions metric is evaluated"
+  type        = number
+  default     = 300
+}
+
+variable "lambda_concurrent_evaluation_periods" {
+  description = "Number of evaluation periods before the Lambda concurrent executions alarm triggers"
+  type        = number
+  default     = 2
+}
+
+# -----------------------------------------------------------------------------
+# DynamoDB Variables
+# -----------------------------------------------------------------------------
+
+variable "dynamodb_table_name" {
+  description = "DynamoDB table name (required when DynamoDB alarms are enabled)"
+  type        = string
+  default     = ""
+}
+
+variable "enable_dynamodb_throttle_alarm" {
+  description = "Enable the DynamoDB ThrottledRequests alarm"
+  type        = bool
+  default     = false
+}
+
+variable "dynamodb_throttle_threshold" {
+  description = "Number of throttled requests to trigger the alarm"
+  type        = number
+  default     = 5
+}
+
+variable "dynamodb_throttle_period" {
+  description = "Period in seconds over which the DynamoDB throttle metric is evaluated"
+  type        = number
+  default     = 300
+}
+
+variable "dynamodb_throttle_evaluation_periods" {
+  description = "Number of evaluation periods before the DynamoDB throttle alarm triggers"
+  type        = number
+  default     = 2
+}

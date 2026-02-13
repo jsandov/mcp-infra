@@ -37,3 +37,13 @@ output "vpc_rejected_alarm_arn" {
   description = "The ARN of the VPC rejected packets alarm (null if disabled)"
   value       = try(aws_cloudwatch_metric_alarm.vpc_rejected_packets[0].arn, null)
 }
+
+output "lambda_concurrent_alarm_arn" {
+  description = "The ARN of the Lambda concurrent executions alarm (null if disabled)"
+  value       = try(aws_cloudwatch_metric_alarm.lambda_concurrent[0].arn, null)
+}
+
+output "dynamodb_throttle_alarm_arn" {
+  description = "The ARN of the DynamoDB throttled requests alarm (null if disabled)"
+  value       = try(aws_cloudwatch_metric_alarm.dynamodb_throttle[0].arn, null)
+}

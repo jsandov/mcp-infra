@@ -71,9 +71,9 @@ variable "bastion_allowed_cidrs" {
 }
 
 variable "restrict_egress" {
-  description = "Whether to restrict egress to minimum required ports instead of allowing all outbound"
+  description = "Whether to restrict egress to minimum required ports instead of allowing all outbound (recommended: true for production)"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "vpc_cidr_block" {

@@ -175,7 +175,7 @@ resource "aws_cloudwatch_metric_alarm" "apigw_latency" {
   metric_name         = "Latency"
   namespace           = "AWS/ApiGateway"
   period              = var.apigw_latency_period
-  statistic           = "p99"
+  extended_statistic  = "p99"
   threshold           = var.apigw_latency_threshold
   alarm_description   = "API Gateway p99 latency exceeded threshold (FedRAMP SI-4)"
   treat_missing_data  = "notBreaching"
@@ -193,6 +193,80 @@ resource "aws_cloudwatch_metric_alarm" "apigw_latency" {
 
   tags = merge(var.tags, {
     Name        = "${var.environment}-${var.name}-apigw-latency"
+    Environment = var.environment
+    ManagedBy   = "opentofu"
+    FedRAMP     = "SI-4"
+  })
+}
+
+# -----------------------------------------------------------------------------
+# Lambda ConcurrentExecutions Alarm
+# -----------------------------------------------------------------------------
+
+resource "aws_cloudwatch_metric_alarm" "lambda_concurrent" {
+  count = var.enable_lambda_concurrent_alarm ? 1 : 0
+
+  alarm_name          = "${var.environment}-${var.name}-lambda-concurrent"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = var.lambda_concurrent_evaluation_periods
+  metric_name         = "ConcurrentExecutions"
+  namespace           = "AWS/Lambda"
+  period              = var.lambda_concurrent_period
+  statistic           = "Maximum"
+  threshold           = var.lambda_concurrent_threshold
+  alarm_description   = "Lambda concurrent executions approaching limit (FedRAMP SI-4)"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    FunctionName = var.lambda_function_name
+  }
+
+  alarm_actions = compact([
+    aws_sns_topic.alarms.arn,
+    var.remediation_lambda_arn,
+  ])
+
+  ok_actions = [aws_sns_topic.alarms.arn]
+
+  tags = merge(var.tags, {
+    Name        = "${var.environment}-${var.name}-lambda-concurrent"
+    Environment = var.environment
+    ManagedBy   = "opentofu"
+    FedRAMP     = "SI-4"
+  })
+}
+
+# -----------------------------------------------------------------------------
+# DynamoDB ThrottledRequests Alarm
+# -----------------------------------------------------------------------------
+
+resource "aws_cloudwatch_metric_alarm" "dynamodb_throttle" {
+  count = var.enable_dynamodb_throttle_alarm ? 1 : 0
+
+  alarm_name          = "${var.environment}-${var.name}-dynamodb-throttle"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = var.dynamodb_throttle_evaluation_periods
+  metric_name         = "ThrottledRequests"
+  namespace           = "AWS/DynamoDB"
+  period              = var.dynamodb_throttle_period
+  statistic           = "Sum"
+  threshold           = var.dynamodb_throttle_threshold
+  alarm_description   = "DynamoDB table throttling detected (FedRAMP SI-4)"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    TableName = var.dynamodb_table_name
+  }
+
+  alarm_actions = compact([
+    aws_sns_topic.alarms.arn,
+    var.remediation_lambda_arn,
+  ])
+
+  ok_actions = [aws_sns_topic.alarms.arn]
+
+  tags = merge(var.tags, {
+    Name        = "${var.environment}-${var.name}-dynamodb-throttle"
     Environment = var.environment
     ManagedBy   = "opentofu"
     FedRAMP     = "SI-4"

@@ -99,8 +99,10 @@ resource "aws_lambda_function" "this" {
   handler = var.image_uri != null ? null : var.handler
 
   # Resource allocation
-  memory_size = var.memory_size
-  timeout     = var.timeout
+  memory_size   = var.memory_size
+  timeout       = var.timeout
+  architectures = var.architectures
+  publish       = var.publish
 
   # Concurrency control
   reserved_concurrent_executions = var.reserved_concurrent_executions
