@@ -53,7 +53,7 @@ module "mcp_server" {
 
   name        = "my-tools"
   environment = "dev"
-  image_uri   = "123456789012.dkr.ecr.us-east-1.amazonaws.com/mcp-server:latest"
+  image_uri   = "{AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/mcp-server:latest"
 
   vpc_id                 = module.vpc.vpc_id
   vpc_subnet_ids         = module.vpc.private_subnet_ids
@@ -74,7 +74,7 @@ module "mcp_server" {
 
   name        = "ai-tools"
   environment = "prod"
-  image_uri   = "123456789012.dkr.ecr.us-east-1.amazonaws.com/mcp-server:v2.1.0"
+  image_uri   = "{AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/mcp-server:v2.1.0"
 
   # Compute
   memory_size                    = 1024
@@ -132,7 +132,7 @@ module "mcp_server" {
 
   name        = "ai-tools"
   environment = "prod"
-  image_uri   = "123456789012.dkr.ecr.us-east-1.amazonaws.com/mcp-server:v2.1.0"
+  image_uri   = "{AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/mcp-server:v2.1.0"
 
   # Multi-tenancy
   enable_tenant_isolation = true
@@ -174,7 +174,7 @@ module "tvm" {
   environment             = "prod"
   lambda_role_arn         = module.mcp_server.lambda_role_arn
   lambda_role_name        = module.mcp_server.lambda_role_name
-  tenant_role_arn_pattern = "arn:aws:iam::123456789012:role/mcp-tenant-*"
+  tenant_role_arn_pattern = "arn:aws:iam::{AWS_ACCOUNT_ID}:role/mcp-tenant-*"
   kms_key_arn             = module.kms.key_arn
 }
 

@@ -54,7 +54,7 @@ variable "lambda_role_name" {
 }
 
 variable "tenant_role_arn_pattern" {
-  description = "ARN pattern for tenant roles that the Lambda is allowed to assume (e.g., arn:aws:iam::123456789012:role/mcp-tenant-*)."
+  description = "ARN pattern for tenant roles that the Lambda is allowed to assume (e.g., arn:aws:iam::{AWS_ACCOUNT_ID}:role/mcp-tenant-*)."
   type        = string
 
   validation {

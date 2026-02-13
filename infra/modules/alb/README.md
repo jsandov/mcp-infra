@@ -33,7 +33,7 @@ module "alb" {
   subnet_ids         = module.vpc.public_subnet_ids
   security_group_ids = [module.security_groups.web_security_group_id]
   target_port        = 8080
-  certificate_arn    = "arn:aws:acm:us-east-1:123456789012:certificate/abc-123"
+  certificate_arn    = "arn:aws:acm:us-east-1:{AWS_ACCOUNT_ID}:certificate/abc-123"
   waf_acl_arn        = aws_wafv2_web_acl.main.arn
 
   enable_deletion_protection = true

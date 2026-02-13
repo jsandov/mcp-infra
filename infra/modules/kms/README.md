@@ -50,7 +50,7 @@ module "kms_state" {
   enable_s3_access = true
 
   usage_principal_arns = [
-    "arn:aws:iam::123456789012:role/GitHubActionsRole"
+    "arn:aws:iam::{AWS_ACCOUNT_ID}:role/GitHubActionsRole"
   ]
 
   tags = {

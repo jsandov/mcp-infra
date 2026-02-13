@@ -39,7 +39,7 @@ module "tvm" {
   environment             = "dev"
   lambda_role_arn         = aws_iam_role.mcp_lambda.arn
   lambda_role_name        = aws_iam_role.mcp_lambda.name
-  tenant_role_arn_pattern = "arn:aws:iam::123456789012:role/mcp-tenant-*"
+  tenant_role_arn_pattern = "arn:aws:iam::{AWS_ACCOUNT_ID}:role/mcp-tenant-*"
 }
 ```
 
@@ -53,7 +53,7 @@ module "tvm" {
   environment             = "prod"
   lambda_role_arn         = aws_iam_role.mcp_lambda.arn
   lambda_role_name        = aws_iam_role.mcp_lambda.name
-  tenant_role_arn_pattern = "arn:aws:iam::123456789012:role/mcp-tenant-*"
+  tenant_role_arn_pattern = "arn:aws:iam::{AWS_ACCOUNT_ID}:role/mcp-tenant-*"
 
   allowed_actions = [
     "s3:GetObject",
@@ -162,7 +162,7 @@ resource "aws_iam_role_policy" "tenant_acme_data" {
           "dynamodb:Query"
         ]
         Resource = [
-          "arn:aws:dynamodb:us-east-1:123456789012:table/tenant-data"
+          "arn:aws:dynamodb:us-east-1:{AWS_ACCOUNT_ID}:table/tenant-data"
         ]
         Condition = {
           "ForAllValues:StringEquals" = {

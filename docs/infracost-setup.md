@@ -110,7 +110,7 @@ Navigate to your repository: **Settings** > **Secrets and variables** > **Action
 
 | Secret Name        | Value                                    |
 | ------------------ | ---------------------------------------- |
-| `AWS_ROLE_ARN`     | ARN of the OIDC IAM role (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`) |
+| `AWS_ROLE_ARN`     | ARN of the OIDC IAM role (e.g., `arn:aws:iam::{AWS_ACCOUNT_ID}:role/GitHubActionsRole`) |
 | `INFRACOST_API_KEY` | Your Infracost API key                  |
 
 ---

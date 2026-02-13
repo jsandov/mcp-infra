@@ -31,8 +31,8 @@ module "remote_state" {
   kms_key_arn  = module.kms.key_arn
 
   allowed_principal_arns = [
-    "arn:aws:iam::123456789012:role/GitHubActionsRole",
-    "arn:aws:iam::123456789012:role/AdminRole"
+    "arn:aws:iam::{AWS_ACCOUNT_ID}:role/GitHubActionsRole",
+    "arn:aws:iam::{AWS_ACCOUNT_ID}:role/AdminRole"
   ]
 
   tags = {

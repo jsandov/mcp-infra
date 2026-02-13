@@ -97,7 +97,7 @@ module "lambda" {
   function_name = "ml-inference"
   description   = "Runs ML inference from a container image"
   runtime       = "provided.al2023"
-  image_uri     = "123456789012.dkr.ecr.us-east-1.amazonaws.com/ml-inference:latest"
+  image_uri     = "{AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/ml-inference:latest"
   environment   = "prod"
   memory_size   = 4096
   timeout       = 300
