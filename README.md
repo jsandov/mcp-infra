@@ -39,29 +39,27 @@ cloud-voyager-infra/
 │   │   ├── lambda.md
 │   │   ├── mcp-server.md
 │   │   ├── mcp-token-vending-machine.md
+│   │   ├── mcp-token-vending-machine-v2.md
 │   │   ├── mcp-tenant-metering.md
 │   │   └── vpc-endpoints.md
 │   └── infracost-setup.md           // CI cost estimation setup guide
 ├── infra/
-│   ├── modules/
+│   ├── modules/                     // Reusable infrastructure modules
 │   │   ├── vpc/                     // VPC + subnets + NAT + flow logs
 │   │   ├── security_groups/         // Tiered SGs (web/app/db/bastion)
 │   │   ├── alb/                     // Application Load Balancer + WAF
-│   │   ├── api_gateway/             // API Gateway v2 (HTTP API)
+│   │   ├── api_gateway/             // Shared API Gateway v2 (HTTP API)
+│   │   ├── api_gateway_routes/      // Per-service route isolation
 │   │   ├── kms/                     // Customer-managed encryption keys
 │   │   ├── remote_state/            // S3 + DynamoDB state backend
 │   │   ├── cloudwatch_alarms/       // SNS + alarms for observability
 │   │   ├── lambda/                  // FedRAMP-compliant Lambda functions
-│   │   ├── mcp_server/             // MCP server on Lambda + API Gateway
-│   │   ├── mcp_token_vending_machine/ // Tenant-scoped IAM via STS
-│   │   ├── mcp_tenant_metering/   // Per-tenant usage tracking
 │   │   └── vpc_endpoints/           // S3 + DynamoDB Gateway endpoints
-│   ├── main.tf                      // Root config — wires modules
-│   ├── variables.tf                 // Root-level variables
-│   ├── outputs.tf                   // Root-level outputs
-│   ├── providers.tf                 // AWS provider config
-│   ├── versions.tf                  // Version constraints
-│   └── terraform.tfvars.example     // Example variable values
+│   └── example_infra_patterns/      // Reference implementations
+│       ├── networking/              // Root networking config example
+│       ├── mcp_server/              // MCP server on Lambda + API Gateway
+│       ├── mcp_token_vending_machine/ // Tenant-scoped IAM via STS
+│       └── mcp_tenant_metering/     // Per-tenant usage tracking
 └── .github/
     └── workflows/
         └── tofu-plan.yml            // CI: plan + Infracost + security scan
@@ -72,7 +70,7 @@ cloud-voyager-infra/
 ## `/// INITIALIZE`
 
 ```bash
-cd infra
+cd infra/example_infra_patterns/networking
 
 # Load configuration
 cp terraform.tfvars.example terraform.tfvars
@@ -141,9 +139,9 @@ Application Load Balancer with HTTPS redirect, TLS termination, WAF integration,
 ### `[API GATEWAY]`
 **Service Mesh Interface**
 
-API Gateway v2 (HTTP API) with access logging, throttling, optional CORS, VPC Link for private backends, and WAF association.
+Shared API Gateway v2 (HTTP API) with access logging, throttling, CORS, VPC Link, WAF, JWT authorizer, per-route throttle overrides, and `prevent_destroy` lifecycle guards.
 
-`FedRAMP: AU-2 · AU-9 · SC-7 · SC-8`
+`FedRAMP: AU-2 · AU-9 · SC-7 · SC-8 · IA-2`
 
 [`> ACCESS DISC`](infra/modules/api_gateway/README.md)
 
@@ -204,14 +202,14 @@ Gateway VPC Endpoints for S3 and DynamoDB. Routes traffic over the AWS backbone,
 <tr>
 <td width="50%" valign="top">
 
-### `[CI/CD PIPELINE]`
-**Automated Sentinel**
+### `[API GATEWAY ROUTES]`
+**Per-Service Route Isolation**
 
-GitHub Actions workflow: `tofu plan` + `tofu validate` + `tofu fmt` on every PR. Infracost cost estimates and Trivy/Checkov security scanning.
+Multi-team route management for shared API Gateways. State isolation, route prefix collision prevention, Lambda alias versioning, and `create_before_destroy` lifecycle for zero-downtime updates.
 
-`FedRAMP: SA-11 · CM-3 · SC-8`
+`FedRAMP: AC-6 · SC-7`
 
-[`> ACCESS DISC`](.github/workflows/tofu-plan.yml)
+[`> ACCESS DISC`](infra/modules/api_gateway_routes/README.md)
 
 </td>
 <td width="50%" valign="top">
@@ -230,6 +228,33 @@ FedRAMP-compliant Lambda functions with KMS-encrypted environment variables, Clo
 <tr>
 <td width="50%" valign="top">
 
+### `[CI/CD PIPELINE]`
+**Automated Sentinel**
+
+GitHub Actions workflow: `tofu plan` + `tofu validate` + `tofu fmt` on every PR. Infracost cost estimates and Trivy/Checkov security scanning.
+
+`FedRAMP: SA-11 · CM-3 · SC-8`
+
+[`> ACCESS DISC`](.github/workflows/tofu-plan.yml)
+
+</td>
+<td width="50%" valign="top">
+</td>
+</tr>
+</table>
+
+<br>
+
+## `/// EXAMPLE PATTERNS`
+
+> Reference implementations demonstrating how to compose the reusable modules above. These are not consumed directly — they live in `infra/example_infra_patterns/`.
+
+<br>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
 ### `[MCP SERVER]`
 **AI Tool Integration Platform**
 
@@ -237,7 +262,7 @@ Production-ready MCP server on Lambda with API Gateway v2, Cognito OAuth 2.0 aut
 
 `FedRAMP: SC-7 · SC-8 · SC-28 · AC-6 · AU-2 · SI-4 · IA-2 · CM-7`
 
-[`> ACCESS DISC`](infra/modules/mcp_server/README.md)
+[`> ACCESS DISC`](infra/example_infra_patterns/mcp_server/README.md)
 
 </td>
 <td width="50%" valign="top">
@@ -249,7 +274,7 @@ STS AssumeRole pattern for tenant-scoped IAM credentials with permission boundar
 
 `FedRAMP: AC-6 · AC-2 · SC-7`
 
-[`> ACCESS DISC`](infra/modules/mcp_token_vending_machine/README.md)
+[`> ACCESS DISC`](infra/example_infra_patterns/mcp_token_vending_machine/README.md)
 
 </td>
 </tr>
@@ -263,10 +288,18 @@ Per-tenant API usage tracking via DynamoDB, CloudWatch metric filters for aggreg
 
 `FedRAMP: AU-2 · SI-4 · CM-7 · IR-4`
 
-[`> ACCESS DISC`](infra/modules/mcp_tenant_metering/README.md)
+[`> ACCESS DISC`](infra/example_infra_patterns/mcp_tenant_metering/README.md)
 
 </td>
 <td width="50%" valign="top">
+
+### `[NETWORKING]`
+**Root Config Example**
+
+Example root configuration wiring VPC, subnets, security groups, and other foundational modules together.
+
+[`> ACCESS DISC`](infra/example_infra_patterns/networking/)
+
 </td>
 </tr>
 </table>
