@@ -11,8 +11,10 @@ flowchart LR
     APIGW["API Gateway v2<br/>HTTP API"]
     Lambda["Lambda Function<br/>(Container Image)"]
 
-    Client -->|"HTTPS POST/GET/DELETE /mcp<br/>JSON-RPC 2.0"| WAF
-    WAF --> APIGW
+    CF["CloudFront + WAF<br/>(recommended)"]
+
+    Client -->|"HTTPS POST/GET/DELETE /mcp<br/>JSON-RPC 2.0"| CF
+    CF --> APIGW
     APIGW -->|"AWS_PROXY<br/>payload v2.0"| Lambda
 ```
 
@@ -191,7 +193,7 @@ flowchart TB
 
 | Control | ID | Implementation |
 | --- | --- | --- |
-| Boundary Protection | SC-7 | VPC required, WAF optional, security groups, tenant isolation via Firecracker VMs |
+| Boundary Protection | SC-7 | VPC required, CloudFront + WAF recommended (WAFv2 not supported on HTTP API v2), security groups, tenant isolation via Firecracker VMs |
 | Transmission Confidentiality | SC-8 | TLS on API Gateway, HTTPS-only |
 | Cryptographic Key Management | SC-12/13 | KMS customer-managed key (required) |
 | Encryption at Rest | SC-28 | KMS for env vars, logs, DynamoDB, ECR |
@@ -202,6 +204,13 @@ flowchart TB
 | Authentication | IA-2/8 | Cognito OAuth 2.0 JWT authorizer (internal or external pool) |
 | Least Functionality | CM-7 | Reserved concurrency, timeouts, per-route throttling |
 | Tenant Isolation | SC-7 | Firecracker VM per tenant when `enable_tenant_isolation = true` |
+
+## Known Limitations
+
+- **WAFv2 not supported on HTTP API v2**: The `aws_wafv2_web_acl_association` resource will fail at apply time if `waf_acl_arn` is provided. WAFv2 only supports REST APIs for API Gateway. Place a CloudFront distribution in front of the HTTP API and associate WAF with CloudFront instead.
+- **30-second hard integration timeout**: HTTP API v2 has an immutable 30-second maximum integration timeout. This impacts the `GET /mcp` SSE streaming endpoint -- long-lived connections are forcibly closed. Mitigations: (1) polling/chunked-response pattern, (2) REST API with response streaming, or (3) Lambda Function URLs with `RESPONSE_STREAM` (incompatible with tenant isolation).
+- **Lambda tenancy_config provider support**: GA AWS API feature but may not be supported in all `hashicorp/aws` provider versions. Verify against your pinned version.
+- **DynamoDB LeadingKeys not enforced in IAM**: The IAM policy grants broad access without `dynamodb:LeadingKeys` conditions. True IAM-level tenant isolation requires per-invocation STS scoping via the token vending machine pattern.
 
 ## Design Decisions
 
