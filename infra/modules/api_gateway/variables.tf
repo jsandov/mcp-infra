@@ -152,16 +152,6 @@ variable "vpc_link_security_group_ids" {
 }
 
 # -----------------------------------------------------------------------------
-# WAF (FedRAMP SC-7 — Layer 7 protection)
-# -----------------------------------------------------------------------------
-
-variable "waf_acl_arn" {
-  description = "ARN of the WAFv2 web ACL to associate with the API stage. If null, no WAF is attached."
-  type        = string
-  default     = null
-}
-
-# -----------------------------------------------------------------------------
 # Shared JWT Authorizer (FedRAMP IA-2)
 # -----------------------------------------------------------------------------
 

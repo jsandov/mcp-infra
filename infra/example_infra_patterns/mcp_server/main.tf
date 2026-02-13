@@ -367,15 +367,13 @@ resource "aws_lambda_permission" "apigw" {
 }
 
 # ---------------------------------------------------------------------------
-# WAF v2 Association (SC-7, conditional)
+# WAF — NOT supported on HTTP API v2
 # ---------------------------------------------------------------------------
-
-resource "aws_wafv2_web_acl_association" "this" {
-  count = var.waf_acl_arn != null ? 1 : 0
-
-  resource_arn = aws_apigatewayv2_stage.default.arn
-  web_acl_arn  = var.waf_acl_arn
-}
+# AWS WAFv2 cannot be directly associated with HTTP API v2 stages.
+# For Layer 7 protection (FedRAMP SC-7), place a CloudFront distribution
+# in front of the HTTP API and associate the WAFv2 Web ACL with CloudFront.
+# See: docs/architecture/api-gateway.md — Known Limitations
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # ECR Repository (conditional)

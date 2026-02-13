@@ -169,12 +169,6 @@ variable "cors_allowed_origins" {
   default     = ["*"]
 }
 
-variable "waf_acl_arn" {
-  description = "ARN of the WAF v2 Web ACL to associate with the API Gateway stage"
-  type        = string
-  default     = null
-}
-
 variable "route_throttle_overrides" {
   description = "Per-route throttling overrides for API Gateway routes. Keys are route keys (e.g., 'POST /mcp')."
   type = map(object({
