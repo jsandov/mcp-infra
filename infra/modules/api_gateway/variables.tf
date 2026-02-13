@@ -197,6 +197,45 @@ variable "route_throttle_overrides" {
 }
 
 # -----------------------------------------------------------------------------
+# mTLS — Mutual TLS Authentication (IA-2)
+# -----------------------------------------------------------------------------
+
+variable "enable_mtls" {
+  description = "Enable mutual TLS authentication via a custom domain name. Requires custom_domain_name, mtls_certificate_arn, and mtls_truststore_uri."
+  type        = bool
+  default     = false
+}
+
+variable "custom_domain_name" {
+  description = "Custom domain name for the API Gateway (e.g., api.example.com). Required when enable_mtls is true."
+  type        = string
+  default     = null
+}
+
+variable "mtls_certificate_arn" {
+  description = "ACM certificate ARN for the custom domain. Required when enable_mtls is true."
+  type        = string
+  default     = null
+}
+
+variable "mtls_truststore_uri" {
+  description = "S3 URI of the PEM-encoded truststore for client certificate validation (e.g., s3://bucket/truststore.pem). Required when enable_mtls is true."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.mtls_truststore_uri == null || can(regex("^s3://", var.mtls_truststore_uri))
+    error_message = "Truststore URI must be an S3 URI (s3://bucket/key)."
+  }
+}
+
+variable "mtls_truststore_version" {
+  description = "Version of the S3 truststore object. When null, uses the latest version."
+  type        = string
+  default     = null
+}
+
+# -----------------------------------------------------------------------------
 # Tags
 # -----------------------------------------------------------------------------
 

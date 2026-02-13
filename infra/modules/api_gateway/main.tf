@@ -148,3 +148,42 @@ resource "aws_apigatewayv2_authorizer" "jwt" {
     audience = var.jwt_audience
   }
 }
+
+# -----------------------------------------------------------------------------
+# Custom Domain with mTLS (conditional — machine-to-machine auth, IA-2)
+# -----------------------------------------------------------------------------
+# HTTP API v2 supports mTLS only through custom domain names. The truststore
+# is an S3 object containing the PEM-encoded CA certificates that clients
+# must present. This is ideal for machine-to-machine (M2M) authentication
+# where both sides hold X.509 certificates.
+
+resource "aws_apigatewayv2_domain_name" "mtls" {
+  count = var.enable_mtls ? 1 : 0
+
+  domain_name = var.custom_domain_name
+
+  domain_name_configuration {
+    certificate_arn = var.mtls_certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+
+  mutual_tls_authentication {
+    truststore_uri     = var.mtls_truststore_uri
+    truststore_version = var.mtls_truststore_version
+  }
+
+  tags = merge(var.tags, {
+    Name        = "${var.environment}-${var.name}-mtls-domain"
+    Environment = var.environment
+    ManagedBy   = "opentofu"
+  })
+}
+
+resource "aws_apigatewayv2_api_mapping" "mtls" {
+  count = var.enable_mtls ? 1 : 0
+
+  api_id      = aws_apigatewayv2_api.this.id
+  domain_name = aws_apigatewayv2_domain_name.mtls[0].id
+  stage       = aws_apigatewayv2_stage.default.id
+}

@@ -370,6 +370,37 @@ resource "aws_apigatewayv2_stage" "default" {
   tags = local.tags
 }
 
+# ---------------------------------------------------------------------------
+# Custom Domain with mTLS (conditional — machine-to-machine auth, IA-2)
+# ---------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_domain_name" "mtls" {
+  count = var.enable_mtls ? 1 : 0
+
+  domain_name = var.custom_domain_name
+
+  domain_name_configuration {
+    certificate_arn = var.mtls_certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+
+  mutual_tls_authentication {
+    truststore_uri     = var.mtls_truststore_uri
+    truststore_version = var.mtls_truststore_version
+  }
+
+  tags = local.tags
+}
+
+resource "aws_apigatewayv2_api_mapping" "mtls" {
+  count = var.enable_mtls ? 1 : 0
+
+  api_id      = aws_apigatewayv2_api.this.id
+  domain_name = aws_apigatewayv2_domain_name.mtls[0].id
+  stage       = aws_apigatewayv2_stage.default.id
+}
+
 # Cognito JWT authorizer (IA-2)
 resource "aws_apigatewayv2_authorizer" "cognito" {
   count = var.enable_auth ? 1 : 0
