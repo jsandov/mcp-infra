@@ -1,312 +1,169 @@
-<p align="center">
-  <img src="docs/banner.svg" alt="Cloud Voyager Infra" width="820">
-</p>
+# Cloud Voyager Infra
 
-<p align="center">
-  <img src="https://img.shields.io/badge/OpenTofu-%3E%3D1.11.0-00FFFF?style=flat-square&logo=opentofu&logoColor=00FFFF&labelColor=0d1117" alt="OpenTofu">
-  <img src="https://img.shields.io/badge/AWS-Cloud-00FFFF?style=flat-square&logo=amazonaws&logoColor=00FFFF&labelColor=0d1117" alt="AWS">
-  <img src="https://img.shields.io/badge/FedRAMP-Aligned-00FFFF?style=flat-square&labelColor=0d1117" alt="FedRAMP">
-  <img src="https://img.shields.io/badge/License-MIT-00FFFF?style=flat-square&labelColor=0d1117" alt="License">
-</p>
+![OpenTofu](https://img.shields.io/badge/OpenTofu-%3E%3D1.11-7B42BC?style=flat-square&logo=opentofu)
+![AWS](https://img.shields.io/badge/AWS-Cloud-FF9900?style=flat-square&logo=amazonaws)
+![FedRAMP](https://img.shields.io/badge/FedRAMP-Aligned-0071BC?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-<p align="center">
-  <em>"The Grid. A digital frontier. I tried to picture clusters of information<br>as they moved through the computer..."</em>
-</p>
+Production-hardened OpenTofu modules for AWS, aligned with the **AWS Well-Architected Framework** and **FedRAMP** security controls (NIST 800-53). Built by **Cloud Alchemist**.
 
 ---
 
-<br>
+**What this repo demonstrates:**
 
-> **`> SYSTEM BOOT :: CLOUD-VOYAGER-INFRA v1.0`**
->
-> Production-hardened OpenTofu modules for AWS. Reusable, versioned, and aligned with the **AWS Well-Architected Framework** and **FedRAMP** security controls.
+- **11 reusable modules** covering networking, compute, security, observability, encryption, and state management
+- **6 reference architectures** showing how modules compose into real-world deployments
+- **FedRAMP/NIST 800-53 alignment** with 15+ security controls mapped to infrastructure
+- **Multi-tenant isolation patterns** including token vending, tenant metering, and row-level DynamoDB partitioning
+- **Automated CI/CD pipeline** with `tofu plan`, Infracost cost estimation, Trivy, and Checkov security scanning
+- **Per-module architecture diagrams** with Mermaid for every component
 
-<br>
+---
 
-## `/// GRID MAP`
+## Architecture Overview
 
-```text
-cloud-voyager-infra/
-├── docs/
-│   ├── architecture/                // Per-module Mermaid diagrams
-│   │   ├── vpc.md
-│   │   ├── security-groups.md
-│   │   ├── alb.md
-│   │   ├── api-gateway.md
-│   │   ├── kms.md
-│   │   ├── remote-state.md
-│   │   ├── cloudwatch-alarms.md
-│   │   ├── lambda.md
-│   │   ├── mcp-server.md
-│   │   ├── mcp-token-vending-machine.md
-│   │   ├── mcp-token-vending-machine-v2.md
-│   │   ├── mcp-tenant-metering.md
-│   │   └── vpc-endpoints.md
-│   └── infracost-setup.md           // CI cost estimation setup guide
-├── infra/
-│   ├── modules/                     // Reusable infrastructure modules
-│   │   ├── vpc/                     // VPC + subnets + NAT + flow logs
-│   │   ├── security_groups/         // Tiered SGs (web/app/db/bastion)
-│   │   ├── alb/                     // Application Load Balancer + WAF
-│   │   ├── api_gateway/             // Shared API Gateway v2 (HTTP API)
-│   │   ├── api_gateway_routes/      // Per-service route isolation
-│   │   ├── kms/                     // Customer-managed encryption keys
-│   │   ├── remote_state/            // S3 + DynamoDB state backend
-│   │   ├── cloudwatch_alarms/       // SNS + alarms for observability
-│   │   ├── lambda/                  // FedRAMP-compliant Lambda functions
-│   │   └── vpc_endpoints/           // S3 + DynamoDB Gateway endpoints
-│   └── example_infra_patterns/      // Reference implementations
-│       ├── networking/              // Root networking config example
-│       ├── mcp_server/              // MCP server on Lambda + API Gateway
-│       ├── mcp_token_vending_machine/ // Tenant-scoped IAM via STS
-│       └── mcp_tenant_metering/     // Per-tenant usage tracking
-└── .github/
-    └── workflows/
-        └── tofu-plan.yml            // CI: plan + Infracost + security scan
+```mermaid
+flowchart TB
+    subgraph Edge["Edge Layer"]
+        CF["CloudFront + WAF"]
+        ALB["Application Load Balancer"]
+        APIGW["API Gateway v2"]
+    end
+
+    subgraph Network["Network Layer"]
+        VPC["VPC"]
+        SG["Security Groups"]
+        VPCE["VPC Endpoints"]
+    end
+
+    subgraph Compute["Compute Layer"]
+        Lambda["Lambda Functions"]
+    end
+
+    subgraph Data["Data Layer"]
+        DB[("Database Tier")]
+    end
+
+    subgraph CrossCutting["Cross-Cutting"]
+        KMS["KMS Encryption"]
+        CW["CloudWatch Alarms"]
+        RS["Remote State"]
+    end
+
+    CF --> APIGW
+    ALB --> Lambda
+    APIGW --> Lambda
+    Lambda --> DB
+    VPC --> SG
+    SG --> ALB
+    SG --> APIGW
+    SG --> Lambda
+    SG --> DB
+    VPCE --> Lambda
+    KMS -.-> Lambda
+    KMS -.-> CW
+    KMS -.-> RS
+    CW -.-> ALB
+    CW -.-> APIGW
 ```
 
-<br>
+> Per-module architecture diagrams: [docs/architecture/](docs/architecture/)
 
-## `/// INITIALIZE`
+---
+
+## Design Philosophy
+
+This repository is built on five engineering principles:
+
+| Principle | How it's applied |
+| :--- | :--- |
+| **Least Privilege** | Every IAM policy uses explicit actions scoped to specific resources. No `*` wildcards for actions. Permission boundaries on all assumable roles. |
+| **Defense in Depth** | Layered security groups (web > app > db), WAF at the edge, KMS encryption at rest, TLS in transit, VPC endpoints for private AWS API access. |
+| **Immutable Infrastructure** | `create_before_destroy` lifecycles, `name_prefix` for zero-downtime replacements, `prevent_destroy` on stateful resources. |
+| **Module Composability** | Each module is independently versioned, tested, and documented. Example patterns show how modules compose without tight coupling. |
+| **Compliance as Code** | FedRAMP controls (SC-7, AC-6, AU-2, SC-28, etc.) are enforced through OpenTofu `validation` blocks, `check` assertions, and CI policy scanning. |
+
+---
+
+## Modules
+
+Reusable, independently versioned modules in [`infra/modules/`](infra/modules/).
+
+### Networking
+
+| Module | Description | FedRAMP Controls | Docs |
+| :--- | :--- | :--- | :--- |
+| **vpc** | VPC with public/private subnets across multiple AZs, Internet Gateway, optional NAT Gateway, VPC Flow Logs with KMS encryption, and hardened default resources | AU-2, SC-7, SC-28 | [README](infra/modules/vpc/README.md) |
+| **security_groups** | Tiered security groups for web, app, database, and bastion tiers with optional restricted egress, configurable ingress CIDRs, and production safety checks | AC-4, SC-7 | [README](infra/modules/security_groups/README.md) |
+| **vpc_endpoints** | Gateway VPC Endpoints for S3 and DynamoDB, routing traffic over the AWS private backbone to eliminate NAT costs and public internet exposure | SC-7, AC-4, SC-8 | [README](infra/modules/vpc_endpoints/README.md) |
+
+### Edge & Routing
+
+| Module | Description | FedRAMP Controls | Docs |
+| :--- | :--- | :--- | :--- |
+| **alb** | Application Load Balancer with HTTPS redirect, TLS termination, WAF integration, access logging, and connection draining | SC-7, SC-8, AU-2 | [README](infra/modules/alb/README.md) |
+| **api_gateway** | Shared API Gateway v2 (HTTP API) with access logging, throttling, CORS, VPC Link, JWT authorizer, and KMS-encrypted logs | AU-2, SC-7, SC-8, IA-2 | [README](infra/modules/api_gateway/README.md) |
+| **api_gateway_routes** | Per-service route isolation for shared API Gateways with state isolation, route prefix collision prevention, and zero-downtime lifecycle management | AC-6, SC-7 | [README](infra/modules/api_gateway_routes/README.md) |
+| **cloudfront_waf** | CloudFront distribution with WAFv2 Web ACL for Layer 7 protection of HTTP API v2 endpoints that cannot directly associate with WAFv2 | SC-7, SI-4 | [Source](infra/modules/cloudfront_waf/) |
+
+### Compute
+
+| Module | Description | FedRAMP Controls | Docs |
+| :--- | :--- | :--- | :--- |
+| **lambda** | FedRAMP-compliant Lambda functions with KMS-encrypted environment variables, least-privilege IAM, optional VPC deployment, X-Ray tracing, dead-letter queues, and function URLs | SC-8, SC-28, AC-6, AU-2, SI-4 | [README](infra/modules/lambda/README.md) |
+
+### Security & Encryption
+
+| Module | Description | FedRAMP Controls | Docs |
+| :--- | :--- | :--- | :--- |
+| **kms** | Customer-managed KMS keys with automatic rotation, least-privilege key policies, and service-specific access grants for CloudWatch Logs and S3 | SC-12, SC-13, SC-28 | [README](infra/modules/kms/README.md) |
+
+### Observability
+
+| Module | Description | FedRAMP Controls | Docs |
+| :--- | :--- | :--- | :--- |
+| **cloudwatch_alarms** | Configurable CloudWatch metric alarms for ALB, API Gateway, and VPC Flow Logs with SNS notifications and optional auto-remediation via Lambda | SI-4, SI-5, IR-4, AU-6 | [README](infra/modules/cloudwatch_alarms/README.md) |
+
+### State Management
+
+| Module | Description | FedRAMP Controls | Docs |
+| :--- | :--- | :--- | :--- |
+| **remote_state** | S3 + DynamoDB backend for OpenTofu state with encryption at rest, state locking, versioning, and access logging | SC-8, SC-28, AU-2, AC-6 | [README](infra/modules/remote_state/README.md) |
+
+---
+
+## Example Patterns
+
+Reference architectures in [`infra/example_infra_patterns/`](infra/example_infra_patterns/) showing how modules compose into production deployments.
+
+| Pattern | Description | Docs |
+| :--- | :--- | :--- |
+| **networking** | Root networking configuration wiring VPC, subnets, security groups, and VPC endpoints together | [Source](infra/example_infra_patterns/networking/) |
+| **api_gateway_platform** | Shared API Gateway v2 deployment owned by the platform team, enabling multi-team route attachment via state isolation | [Source](infra/example_infra_patterns/api_gateway_platform/) |
+| **api_gateway_service** | Service team route attachment to a shared API Gateway, reading platform state via `terraform_remote_state` for blast-radius control | [Source](infra/example_infra_patterns/api_gateway_service/) |
+| **mcp_server** | Production-ready MCP server on Lambda + API Gateway v2 with Cognito OAuth 2.0, KMS encryption, CloudWatch alarms, and multi-tenant isolation | [README](infra/example_infra_patterns/mcp_server/README.md) |
+| **mcp_token_vending_machine** | Tenant-scoped IAM credentials via STS AssumeRole with permission boundaries, session tags, and template tenant roles | [README](infra/example_infra_patterns/mcp_token_vending_machine/README.md) |
+| **mcp_tenant_metering** | Per-tenant API usage tracking via DynamoDB with CloudWatch metric filters, quota alarms, and SNS notifications | [README](infra/example_infra_patterns/mcp_tenant_metering/README.md) |
+
+---
+
+## Quick Start
 
 ```bash
 cd infra/example_infra_patterns/networking
 
-# Load configuration
+# Copy and edit the example variables
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your values
 
-# Connect to the Grid
+# Initialize providers
 tofu init
 
-# Scan the horizon
+# Preview changes
 tofu plan
 
-# Enter the Grid
+# Apply infrastructure
 tofu apply
 ```
-
-<br>
-
-## `/// PROGRAM DIRECTORY`
-
-> Each module is independently versioned and documented. Click to access the module's identity disc.
-
-<br>
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### `[VPC]`
-**Network Foundation**
-
-VPC with public/private subnets across multiple AZs, Internet Gateway, optional NAT Gateway, VPC Flow Logs with KMS encryption, and hardened default resources.
-
-`FedRAMP: AU-2 · SC-7 · SC-28`
-
-[`> ACCESS DISC`](infra/modules/vpc/README.md)
-
-</td>
-<td width="50%" valign="top">
-
-### `[SECURITY GROUPS]`
-**Access Control Layer**
-
-Tiered security group patterns for web, application, database, and bastion tiers. Optional restricted egress with per-tier port allowlists.
-
-`FedRAMP: AC-4 · SC-7`
-
-[`> ACCESS DISC`](infra/modules/security_groups/README.md)
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### `[ALB]`
-**Edge Gateway**
-
-Application Load Balancer with HTTPS redirect, TLS termination, WAF integration, access logging, and connection draining.
-
-`FedRAMP: SC-7 · SC-8 · AU-2`
-
-[`> ACCESS DISC`](infra/modules/alb/README.md)
-
-</td>
-<td width="50%" valign="top">
-
-### `[API GATEWAY]`
-**Service Mesh Interface**
-
-Shared API Gateway v2 (HTTP API) with access logging, throttling, CORS, VPC Link, WAF, JWT authorizer, per-route throttle overrides, and `prevent_destroy` lifecycle guards.
-
-`FedRAMP: AU-2 · AU-9 · SC-7 · SC-8 · IA-2`
-
-[`> ACCESS DISC`](infra/modules/api_gateway/README.md)
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### `[KMS]`
-**Encryption Core**
-
-Customer-managed KMS keys with automatic rotation, least-privilege key policies, and service-specific access grants for CloudWatch Logs and S3.
-
-`FedRAMP: SC-12 · SC-13 · SC-28`
-
-[`> ACCESS DISC`](infra/modules/kms/README.md)
-
-</td>
-<td width="50%" valign="top">
-
-### `[REMOTE STATE]`
-**State Persistence**
-
-S3 + DynamoDB backend for OpenTofu state with encryption at rest, state locking, versioning, and optional access logging.
-
-`FedRAMP: SC-8 · SC-28 · AU-2 · AC-6`
-
-[`> ACCESS DISC`](infra/modules/remote_state/README.md)
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### `[CLOUDWATCH ALARMS]`
-**Threat Monitor**
-
-SNS topic with KMS encryption and configurable alarms for ALB errors, API Gateway latency, and VPC flow log anomalies. Optional Lambda remediation.
-
-`FedRAMP: SI-4 · SI-5 · IR-4 · AU-6`
-
-[`> ACCESS DISC`](infra/modules/cloudwatch_alarms/README.md)
-
-</td>
-<td width="50%" valign="top">
-
-### `[VPC ENDPOINTS]`
-**Private Network Paths**
-
-Gateway VPC Endpoints for S3 and DynamoDB. Routes traffic over the AWS backbone, eliminating NAT costs and public internet exposure.
-
-`FedRAMP: SC-7 · AC-4 · SC-8`
-
-[`> ACCESS DISC`](infra/modules/vpc_endpoints/README.md)
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### `[API GATEWAY ROUTES]`
-**Per-Service Route Isolation**
-
-Multi-team route management for shared API Gateways. State isolation, route prefix collision prevention, Lambda alias versioning, and `create_before_destroy` lifecycle for zero-downtime updates.
-
-`FedRAMP: AC-6 · SC-7`
-
-[`> ACCESS DISC`](infra/modules/api_gateway_routes/README.md)
-
-</td>
-<td width="50%" valign="top">
-
-### `[LAMBDA]`
-**Serverless Compute**
-
-FedRAMP-compliant Lambda functions with KMS-encrypted environment variables, CloudWatch logs with retention, X-Ray tracing, optional VPC placement, and dead letter queues.
-
-`FedRAMP: SC-8 · SC-28 · AC-6 · AU-2 · SI-4`
-
-[`> ACCESS DISC`](infra/modules/lambda/README.md)
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### `[CI/CD PIPELINE]`
-**Automated Sentinel**
-
-GitHub Actions workflow: `tofu plan` + `tofu validate` + `tofu fmt` on every PR. Infracost cost estimates and Trivy/Checkov security scanning.
-
-`FedRAMP: SA-11 · CM-3 · SC-8`
-
-[`> ACCESS DISC`](.github/workflows/tofu-plan.yml)
-
-</td>
-<td width="50%" valign="top">
-</td>
-</tr>
-</table>
-
-<br>
-
-## `/// EXAMPLE PATTERNS`
-
-> Reference implementations demonstrating how to compose the reusable modules above. These are not consumed directly — they live in `infra/example_infra_patterns/`.
-
-<br>
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### `[MCP SERVER]`
-**AI Tool Integration Platform**
-
-Production-ready MCP server on Lambda with API Gateway v2, Cognito OAuth 2.0 auth, KMS encryption, CloudWatch alarms, optional ECR repository and DynamoDB session table.
-
-`FedRAMP: SC-7 · SC-8 · SC-28 · AC-6 · AU-2 · SI-4 · IA-2 · CM-7`
-
-[`> ACCESS DISC`](infra/example_infra_patterns/mcp_server/README.md)
-
-</td>
-<td width="50%" valign="top">
-
-### `[TOKEN VENDING MACHINE]`
-**Tenant IAM Credentials**
-
-STS AssumeRole pattern for tenant-scoped IAM credentials with permission boundaries, session tags, and template tenant roles. Zero-trust multi-tenancy.
-
-`FedRAMP: AC-6 · AC-2 · SC-7`
-
-[`> ACCESS DISC`](infra/example_infra_patterns/mcp_token_vending_machine/README.md)
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### `[TENANT METERING]`
-**Usage Tracking & Quotas**
-
-Per-tenant API usage tracking via DynamoDB, CloudWatch metric filters for aggregate monitoring, and configurable quota alarms with SNS notifications.
-
-`FedRAMP: AU-2 · SI-4 · CM-7 · IR-4`
-
-[`> ACCESS DISC`](infra/example_infra_patterns/mcp_tenant_metering/README.md)
-
-</td>
-<td width="50%" valign="top">
-
-### `[NETWORKING]`
-**Root Config Example**
-
-Example root configuration wiring VPC, subnets, security groups, and other foundational modules together.
-
-[`> ACCESS DISC`](infra/example_infra_patterns/networking/)
-
-</td>
-</tr>
-</table>
-
-<br>
-
-## `/// LINK TO GRID`
 
 Reference modules from external repositories via versioned git source:
 
@@ -323,47 +180,88 @@ module "vpc" {
 }
 ```
 
-<br>
+---
 
-## `/// AUTOMATED DEFENSES`
+## CI/CD Pipeline
 
-Pull requests modifying `infra/**` trigger the CI sentinel:
+Pull requests modifying `infra/**` trigger automated checks via GitHub Actions:
 
-| Check | Purpose |
-| :--- | :--- |
-| `tofu fmt -check` | Enforce consistent formatting |
-| `tofu validate` | Catch configuration errors |
-| `tofu plan` | Preview infrastructure changes |
-| `infracost diff` | Cost impact posted as PR comment |
-| `trivy config` | Scan for misconfigurations |
-| `checkov` | Policy-as-code compliance checks |
+| Check | Tool | Purpose |
+| :--- | :--- | :--- |
+| Formatting | `tofu fmt -check` | Enforce consistent HCL formatting |
+| Validation | `tofu validate` | Catch configuration errors before plan |
+| Plan | `tofu plan` | Preview infrastructure changes (posted as PR comment) |
+| Linting | `tflint` | Detect provider-specific issues and best practice violations |
+| Cost Estimation | `infracost diff` | Cost impact analysis posted as PR comment |
+| Misconfiguration Scan | `trivy config` | Detect security misconfigurations (HIGH/CRITICAL) |
+| Policy Compliance | `checkov` | Policy-as-code compliance checks against CIS/FedRAMP benchmarks |
 
-See [Infracost Setup Guide](docs/infracost-setup.md) for configuring CI secrets.
-
-<br>
-
-## `/// SECURITY PROTOCOL`
-
-| Control | Implementation |
-| :--- | :--- |
-| **Encryption at rest** | KMS customer-managed keys for logs, state, and data |
-| **Encryption in transit** | TLS everywhere — HTTPS-only ALB, API Gateway |
-| **Least privilege** | Scoped IAM policies, tiered security groups |
-| **Audit trail** | VPC Flow Logs, CloudWatch access logs, S3 access logs |
-| **Monitoring** | CloudWatch alarms with SNS alerting |
-| **State protection** | Encrypted S3 backend with DynamoDB locking |
-| **Supply chain** | Pinned provider and CI action versions |
-
-<br>
-
-## `/// DIRECTIVES`
-
-See [docs/architecture/](docs/architecture/) for per-module architecture diagrams.
-
-<br>
+CI actions are pinned to immutable SHAs to prevent supply chain attacks. See [Infracost Setup Guide](docs/infracost-setup.md) for configuring CI secrets.
 
 ---
 
-<p align="center">
-  <sub><code>END OF LINE</code></sub>
-</p>
+## Security Controls
+
+| Control Area | Implementation |
+| :--- | :--- |
+| **Encryption at rest (SC-28)** | KMS customer-managed keys for logs, state, Lambda environment variables, and data stores |
+| **Encryption in transit (SC-8)** | TLS everywhere — HTTPS-only ALB, API Gateway, CloudFront |
+| **Least privilege (AC-6)** | Scoped IAM policies with explicit actions, permission boundaries on assumable roles |
+| **Network segmentation (SC-7)** | Tiered security groups, restricted egress, WAF at edge, VPC endpoints for private access |
+| **Audit logging (AU-2)** | VPC Flow Logs, CloudWatch access logs, S3 access logs, API Gateway request logs |
+| **Continuous monitoring (SI-4)** | CloudWatch alarms with SNS alerting and optional Lambda auto-remediation |
+| **Key management (SC-12)** | KMS automatic key rotation, least-privilege key policies, service-specific grants |
+| **State protection (SC-8, AC-6)** | Encrypted S3 backend with DynamoDB locking, versioning, restricted access |
+| **Supply chain (SA-11)** | Pinned provider versions, pinned CI action SHAs, automated security scanning |
+
+---
+
+## Project Metrics
+
+| Metric | Count |
+| :--- | :--- |
+| Reusable modules | 11 |
+| Reference architectures | 6 |
+| FedRAMP controls covered | 15+ |
+| CI pipeline checks | 7 |
+| Architecture diagrams | 12 |
+
+---
+
+## Project Structure
+
+```text
+cloud-voyager-infra/
+├── infra/
+│   ├── modules/                          # Reusable infrastructure modules
+│   │   ├── vpc/                          # VPC + subnets + NAT + flow logs
+│   │   ├── security_groups/              # Tiered SGs (web/app/db/bastion)
+│   │   ├── alb/                          # Application Load Balancer + WAF
+│   │   ├── api_gateway/                  # Shared API Gateway v2 (HTTP API)
+│   │   ├── api_gateway_routes/           # Per-service route isolation
+│   │   ├── cloudfront_waf/               # CloudFront + WAFv2 edge protection
+│   │   ├── kms/                          # Customer-managed encryption keys
+│   │   ├── lambda/                       # FedRAMP-compliant Lambda functions
+│   │   ├── remote_state/                 # S3 + DynamoDB state backend
+│   │   ├── cloudwatch_alarms/            # SNS + alarms for observability
+│   │   └── vpc_endpoints/                # S3 + DynamoDB Gateway endpoints
+│   └── example_infra_patterns/           # Reference implementations
+│       ├── networking/                   # Root networking config
+│       ├── api_gateway_platform/         # Shared API Gateway (platform team)
+│       ├── api_gateway_service/          # Service route isolation (service team)
+│       ├── mcp_server/                   # MCP server on Lambda + API Gateway
+│       ├── mcp_token_vending_machine/    # Tenant-scoped IAM via STS
+│       └── mcp_tenant_metering/          # Per-tenant usage tracking
+├── docs/
+│   ├── architecture/                     # Per-module Mermaid diagrams
+│   └── infracost-setup.md                # CI cost estimation setup guide
+└── .github/
+    └── workflows/
+        └── tofu-plan.yml                 # CI: plan + security scan + cost estimation
+```
+
+---
+
+## License
+
+MIT
