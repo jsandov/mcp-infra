@@ -24,6 +24,10 @@ resource "aws_apigatewayv2_api" "this" {
     Environment = var.environment
     ManagedBy   = "opentofu"
   })
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -39,6 +43,17 @@ resource "aws_apigatewayv2_stage" "default" {
     for_each = var.enable_access_logging ? [1] : []
     content {
       destination_arn = aws_cloudwatch_log_group.api[0].arn
+      format = jsonencode({
+        requestId               = "$context.requestId"
+        ip                      = "$context.identity.sourceIp"
+        requestTime             = "$context.requestTime"
+        httpMethod              = "$context.httpMethod"
+        routeKey                = "$context.routeKey"
+        status                  = "$context.status"
+        protocol                = "$context.protocol"
+        responseLength          = "$context.responseLength"
+        integrationErrorMessage = "$context.integrationErrorMessage"
+      })
     }
   }
 
@@ -47,11 +62,25 @@ resource "aws_apigatewayv2_stage" "default" {
     throttling_burst_limit = var.throttling_burst_limit
   }
 
+  # Per-route throttle overrides for noisy-neighbor protection
+  dynamic "route_settings" {
+    for_each = var.route_throttle_overrides
+    content {
+      route_key              = route_settings.key
+      throttling_rate_limit  = route_settings.value.throttling_rate_limit
+      throttling_burst_limit = route_settings.value.throttling_burst_limit
+    }
+  }
+
   tags = merge(var.tags, {
     Name        = "${var.environment}-${var.name}-default-stage"
     Environment = var.environment
     ManagedBy   = "opentofu"
   })
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -99,4 +128,25 @@ resource "aws_wafv2_web_acl_association" "this" {
 
   resource_arn = aws_apigatewayv2_stage.default.arn
   web_acl_arn  = var.waf_acl_arn
+}
+
+# -----------------------------------------------------------------------------
+# Shared JWT Authorizer (conditional — centralized authentication, IA-2)
+# -----------------------------------------------------------------------------
+# When enabled, provides a single JWT authorizer that all service route modules
+# can reference. This centralizes authentication policy on the shared gateway
+# instead of each service team creating their own authorizer.
+
+resource "aws_apigatewayv2_authorizer" "jwt" {
+  count = var.enable_jwt_authorizer ? 1 : 0
+
+  api_id           = aws_apigatewayv2_api.this.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "${var.environment}-${var.name}-jwt"
+
+  jwt_configuration {
+    issuer   = var.jwt_issuer
+    audience = var.jwt_audience
+  }
 }

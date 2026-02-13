@@ -37,3 +37,13 @@ output "vpc_link_id" {
   description = "The ID of the VPC Link (null if no VPC Link created)"
   value       = try(aws_apigatewayv2_vpc_link.this[0].id, null)
 }
+
+output "execution_arn" {
+  description = "The execution ARN of the API Gateway, used for Lambda invoke permissions in route modules"
+  value       = aws_apigatewayv2_api.this.execution_arn
+}
+
+output "authorizer_id" {
+  description = "The ID of the shared JWT authorizer (null if no authorizer configured)"
+  value       = try(aws_apigatewayv2_authorizer.jwt[0].id, null)
+}

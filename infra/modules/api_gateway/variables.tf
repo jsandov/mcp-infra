@@ -162,6 +162,51 @@ variable "waf_acl_arn" {
 }
 
 # -----------------------------------------------------------------------------
+# Shared JWT Authorizer (FedRAMP IA-2)
+# -----------------------------------------------------------------------------
+
+variable "enable_jwt_authorizer" {
+  description = "Whether to create a shared JWT authorizer on the API. When enabled, jwt_issuer and jwt_audience are required. Downstream route modules reference the authorizer_id output."
+  type        = bool
+  default     = false
+}
+
+variable "jwt_issuer" {
+  description = "The JWT issuer URL (e.g., Cognito user pool endpoint). Required when enable_jwt_authorizer is true."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.enable_jwt_authorizer == false || (var.jwt_issuer != null && length(var.jwt_issuer) > 0)
+    error_message = "jwt_issuer is required when enable_jwt_authorizer is true."
+  }
+}
+
+variable "jwt_audience" {
+  description = "List of JWT audience values (e.g., Cognito app client IDs). Required when enable_jwt_authorizer is true."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = var.enable_jwt_authorizer == false || length(var.jwt_audience) > 0
+    error_message = "jwt_audience must have at least one value when enable_jwt_authorizer is true."
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Per-Route Throttle Overrides
+# -----------------------------------------------------------------------------
+
+variable "route_throttle_overrides" {
+  description = "Per-route throttling overrides applied to the default stage. Keys are route keys (e.g., 'POST /mcp'). Used for noisy-neighbor protection when multiple services share the gateway."
+  type = map(object({
+    throttling_rate_limit  = number
+    throttling_burst_limit = number
+  }))
+  default = {}
+}
+
+# -----------------------------------------------------------------------------
 # Tags
 # -----------------------------------------------------------------------------
 
