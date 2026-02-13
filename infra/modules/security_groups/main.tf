@@ -5,9 +5,10 @@
 resource "aws_security_group" "web" {
   count = var.create_web_sg ? 1 : 0
 
-  name_prefix = "${var.environment}-web-"
-  description = "Security group for web tier - allows HTTP/HTTPS from internet"
-  vpc_id      = var.vpc_id
+  name_prefix            = "${var.environment}-web-"
+  description            = "Security group for web tier - allows HTTP/HTTPS from internet"
+  vpc_id                 = var.vpc_id
+  revoke_rules_on_delete = true
 
   tags = merge(var.tags, {
     Name        = "${var.environment}-web-sg"
@@ -28,7 +29,7 @@ resource "aws_security_group_rule" "web_http_ingress" {
   from_port         = 80
   to_port           = 80
   protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
+  cidr_blocks       = var.web_ingress_cidrs
   description       = "Allow HTTP from internet"
   security_group_id = aws_security_group.web[0].id
 }
@@ -40,7 +41,7 @@ resource "aws_security_group_rule" "web_https_ingress" {
   from_port         = 443
   to_port           = 443
   protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
+  cidr_blocks       = var.web_ingress_cidrs
   description       = "Allow HTTPS from internet"
   security_group_id = aws_security_group.web[0].id
 }
@@ -114,9 +115,10 @@ resource "aws_security_group_rule" "web_egress_ntp" {
 resource "aws_security_group" "app" {
   count = var.create_app_sg ? 1 : 0
 
-  name_prefix = "${var.environment}-app-"
-  description = "Security group for application tier - allows traffic from web tier"
-  vpc_id      = var.vpc_id
+  name_prefix            = "${var.environment}-app-"
+  description            = "Security group for application tier - allows traffic from web tier"
+  vpc_id                 = var.vpc_id
+  revoke_rules_on_delete = true
 
   tags = merge(var.tags, {
     Name        = "${var.environment}-app-sg"
@@ -223,9 +225,10 @@ resource "aws_security_group_rule" "app_egress_ntp" {
 resource "aws_security_group" "db" {
   count = var.create_db_sg ? 1 : 0
 
-  name_prefix = "${var.environment}-db-"
-  description = "Security group for database tier - allows traffic from app tier"
-  vpc_id      = var.vpc_id
+  name_prefix            = "${var.environment}-db-"
+  description            = "Security group for database tier - allows traffic from app tier"
+  vpc_id                 = var.vpc_id
+  revoke_rules_on_delete = true
 
   tags = merge(var.tags, {
     Name        = "${var.environment}-db-sg"
@@ -308,9 +311,10 @@ resource "aws_security_group_rule" "db_egress_ntp" {
 resource "aws_security_group" "bastion" {
   count = var.create_bastion_sg ? 1 : 0
 
-  name_prefix = "${var.environment}-bastion-"
-  description = "Security group for bastion hosts - allows SSH from allowed CIDRs"
-  vpc_id      = var.vpc_id
+  name_prefix            = "${var.environment}-bastion-"
+  description            = "Security group for bastion hosts - allows SSH from allowed CIDRs"
+  vpc_id                 = var.vpc_id
+  revoke_rules_on_delete = true
 
   tags = merge(var.tags, {
     Name        = "${var.environment}-bastion-sg"
@@ -396,4 +400,28 @@ resource "aws_security_group_rule" "bastion_egress_ntp" {
   cidr_blocks       = ["0.0.0.0/0"]
   description       = "Allow NTP (UDP) outbound"
   security_group_id = aws_security_group.bastion[0].id
+}
+
+# Allow bastion hosts to reach the application tier for SSH access
+resource "aws_security_group_rule" "app_from_bastion" {
+  count = var.create_app_sg && var.create_bastion_sg ? 1 : 0
+
+  type                     = "ingress"
+  from_port                = 22
+  to_port                  = 22
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.bastion[0].id
+  description              = "Allow SSH from bastion hosts"
+  security_group_id        = aws_security_group.app[0].id
+}
+
+# -----------------------------------------------------------------------------
+# Production Safety Checks (SC-7)
+# -----------------------------------------------------------------------------
+
+check "bastion_not_open_to_world" {
+  assert {
+    condition     = !(var.create_bastion_sg && contains(var.bastion_allowed_cidrs, "0.0.0.0/0"))
+    error_message = "WARNING: Bastion SSH ingress allows 0.0.0.0/0. Restrict to known CIDRs for FedRAMP SC-7 compliance."
+  }
 }

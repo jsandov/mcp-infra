@@ -59,6 +59,17 @@ variable "db_port" {
   }
 }
 
+variable "web_ingress_cidrs" {
+  description = "List of CIDR blocks allowed to reach the web tier on HTTP/HTTPS. Defaults to 0.0.0.0/0 (public). Restrict to CloudFront or ALB CIDRs for private deployments."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+
+  validation {
+    condition     = alltrue([for cidr in var.web_ingress_cidrs : can(cidrhost(cidr, 0))])
+    error_message = "All web ingress CIDRs must be valid IPv4 CIDR blocks."
+  }
+}
+
 variable "bastion_allowed_cidrs" {
   description = "List of CIDR blocks allowed to SSH to bastion hosts"
   type        = list(string)
