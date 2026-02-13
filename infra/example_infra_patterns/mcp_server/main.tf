@@ -155,8 +155,11 @@ resource "aws_iam_role_policy" "kms_access" {
 }
 
 # DynamoDB access for session management (conditional)
+# When tenant isolation is enabled, the IAM policy uses dynamodb:LeadingKeys
+# to restrict each tenant to their own partition key prefix. The tenant_id
+# is extracted from JWT claims by the Lambda runtime.
 resource "aws_iam_role_policy" "dynamodb_access" {
-  count = var.enable_session_table ? 1 : 0
+  count = var.enable_session_table && !var.enable_tenant_isolation ? 1 : 0
 
   name = "${local.name_prefix}-mcp-dynamodb-access"
   role = aws_iam_role.lambda.id
@@ -172,10 +175,38 @@ resource "aws_iam_role_policy" "dynamodb_access" {
         "dynamodb:DeleteItem",
         "dynamodb:Query"
       ]
-      Resource = compact([
+      Resource = [aws_dynamodb_table.sessions[0].arn]
+    }]
+  })
+}
+
+# DynamoDB access with tenant isolation — scoped by LeadingKeys (FedRAMP AC-6)
+resource "aws_iam_role_policy" "dynamodb_tenant_access" {
+  count = var.enable_session_table && var.enable_tenant_isolation ? 1 : 0
+
+  name = "${local.name_prefix}-mcp-dynamodb-tenant-access"
+  role = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query"
+      ]
+      Resource = [
         aws_dynamodb_table.sessions[0].arn,
-        var.enable_tenant_isolation ? "${aws_dynamodb_table.sessions[0].arn}/index/session-id-index" : ""
-      ])
+        "${aws_dynamodb_table.sessions[0].arn}/index/session-id-index"
+      ]
+      Condition = {
+        "ForAllValues:StringEquals" = {
+          "dynamodb:LeadingKeys" = ["$${aws:PrincipalTag/tenant_id}"]
+        }
+      }
     }]
   })
 }
