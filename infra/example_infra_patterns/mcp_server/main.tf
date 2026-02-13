@@ -136,7 +136,10 @@ resource "aws_iam_role_policy_attachment" "xray" {
 }
 
 # KMS access for decrypting environment variables and log groups (SC-12, SC-13)
+# Only created when a customer-managed KMS key is provided.
 resource "aws_iam_role_policy" "kms_access" {
+  count = var.kms_key_arn != null ? 1 : 0
+
   name = "${local.name_prefix}-mcp-kms-access"
   role = aws_iam_role.lambda.id
 
@@ -435,7 +438,7 @@ resource "aws_ecr_repository" "this" {
   image_tag_mutability = var.ecr_image_tag_mutability
 
   encryption_configuration {
-    encryption_type = "KMS"
+    encryption_type = var.kms_key_arn != null ? "KMS" : "AES256"
     kms_key         = var.kms_key_arn
   }
 
@@ -771,5 +774,12 @@ check "auth_enabled_in_prod" {
   assert {
     condition     = !(var.environment == "prod" && !var.enable_auth)
     error_message = "WARNING: Authentication is disabled in production. This violates FedRAMP IA-2."
+  }
+}
+
+check "cmk_in_prod" {
+  assert {
+    condition     = !(var.environment == "prod" && var.kms_key_arn == null)
+    error_message = "WARNING: Using AWS-managed encryption in production. Consider a customer-managed KMS key for FedRAMP SC-12/SC-13 compliance."
   }
 }

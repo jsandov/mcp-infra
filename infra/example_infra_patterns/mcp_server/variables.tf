@@ -105,8 +105,9 @@ variable "vpc_security_group_ids" {
 # ---------------------------------------------------------------------------
 
 variable "kms_key_arn" {
-  description = "ARN of the KMS key used to encrypt environment variables, logs, and data at rest"
+  description = "ARN of a customer-managed KMS key for encrypting environment variables, logs, and data at rest. When null, resources use AWS-managed encryption (reduces KMS API costs). Required for FedRAMP SC-12/SC-13 compliance."
   type        = string
+  default     = null
 }
 
 # ---------------------------------------------------------------------------
