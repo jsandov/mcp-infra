@@ -87,6 +87,16 @@ output "tenant_isolation_enabled" {
   value       = var.enable_tenant_isolation
 }
 
+output "lambda_version" {
+  description = "The latest published Lambda version (null if canary deployment is disabled)"
+  value       = var.enable_canary_deployment ? aws_lambda_function.this.version : null
+}
+
+output "canary_alias_arn" {
+  description = "ARN of the Lambda canary alias (null if canary deployment is disabled)"
+  value       = try(aws_lambda_alias.canary[0].arn, null)
+}
+
 output "mtls_domain_name" {
   description = "The custom domain name configured for mTLS (null if mTLS is disabled)"
   value       = try(aws_apigatewayv2_domain_name.mtls[0].domain_name, null)

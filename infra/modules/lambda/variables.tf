@@ -169,6 +169,44 @@ variable "publish" {
   default     = false
 }
 
+# -----------------------------------------------------------------------------
+# Alias / Canary Routing
+# -----------------------------------------------------------------------------
+
+variable "enable_alias" {
+  description = "Create a named Lambda alias pointing to the latest published version. Requires publish = true."
+  type        = bool
+  default     = false
+}
+
+variable "alias_name" {
+  description = "Name of the Lambda alias (e.g., 'live', 'stable')"
+  type        = string
+  default     = "live"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9_-]+$", var.alias_name))
+    error_message = "Alias name must contain only alphanumeric characters, hyphens, and underscores."
+  }
+}
+
+variable "canary_version" {
+  description = "Lambda version number to receive canary traffic. When null, all traffic routes to the latest published version."
+  type        = string
+  default     = null
+}
+
+variable "canary_weight" {
+  description = "Percentage of traffic (0.0-1.0) to route to the canary version"
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.canary_weight >= 0 && var.canary_weight <= 1
+    error_message = "Canary weight must be between 0.0 and 1.0."
+  }
+}
+
 variable "environment" {
   description = "Environment name used for tagging and resource naming (e.g., dev, staging, prod)"
   type        = string

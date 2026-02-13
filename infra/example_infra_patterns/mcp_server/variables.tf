@@ -105,8 +105,9 @@ variable "vpc_security_group_ids" {
 # ---------------------------------------------------------------------------
 
 variable "kms_key_arn" {
-  description = "ARN of the KMS key used to encrypt environment variables, logs, and data at rest"
+  description = "ARN of a customer-managed KMS key for encrypting environment variables, logs, and data at rest. When null, resources use AWS-managed encryption (reduces KMS API costs). Required for FedRAMP SC-12/SC-13 compliance."
   type        = string
+  default     = null
 }
 
 # ---------------------------------------------------------------------------
@@ -315,4 +316,42 @@ variable "dead_letter_target_arn" {
   description = "ARN of an SQS queue or SNS topic for failed async Lambda invocations. Recommended for production."
   type        = string
   default     = null
+}
+
+# ---------------------------------------------------------------------------
+# Canary Deployment
+# ---------------------------------------------------------------------------
+
+variable "enable_canary_deployment" {
+  description = "Enable canary deployments via Lambda alias with weighted traffic routing. Creates a named alias and publishes Lambda versions."
+  type        = bool
+  default     = false
+}
+
+variable "canary_alias_name" {
+  description = "Name of the Lambda alias for canary routing (e.g., 'live')"
+  type        = string
+  default     = "live"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9_-]+$", var.canary_alias_name))
+    error_message = "Alias name must contain only alphanumeric characters, hyphens, and underscores."
+  }
+}
+
+variable "canary_version" {
+  description = "Lambda version number to receive canary traffic. When null, all traffic routes to the latest published version."
+  type        = string
+  default     = null
+}
+
+variable "canary_weight" {
+  description = "Percentage of traffic (0.0-1.0) to route to the canary version"
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.canary_weight >= 0 && var.canary_weight <= 1
+    error_message = "Canary weight must be between 0.0 and 1.0."
+  }
 }

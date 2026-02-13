@@ -150,6 +150,29 @@ resource "aws_lambda_function" "this" {
 }
 
 # -----------------------------------------------------------------------------
+# Lambda Alias with Canary Routing (conditional)
+# When enabled, creates a named alias that can shift traffic between two
+# Lambda versions for blue/green or canary deployments. Requires publish = true.
+# -----------------------------------------------------------------------------
+
+resource "aws_lambda_alias" "this" {
+  count = var.enable_alias ? 1 : 0
+
+  name             = var.alias_name
+  function_name    = aws_lambda_function.this.function_name
+  function_version = aws_lambda_function.this.version
+
+  dynamic "routing_config" {
+    for_each = var.canary_version != null && var.canary_weight > 0 ? [1] : []
+    content {
+      additional_version_weights = {
+        (var.canary_version) = var.canary_weight
+      }
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Lambda Function URL (conditional)
 # -----------------------------------------------------------------------------
 
