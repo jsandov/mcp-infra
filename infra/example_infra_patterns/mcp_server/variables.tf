@@ -53,13 +53,13 @@ variable "memory_size" {
 }
 
 variable "timeout" {
-  description = "Maximum execution time in seconds for the Lambda function"
+  description = "Maximum execution time in seconds for the Lambda function. Capped at 30 seconds because HTTP API v2 has a hard 30-second integration timeout — the gateway will terminate the connection regardless of Lambda's configured timeout."
   type        = number
-  default     = 180
+  default     = 30
 
   validation {
-    condition     = var.timeout >= 1 && var.timeout <= 900
-    error_message = "Timeout must be between 1 and 900 seconds."
+    condition     = var.timeout >= 1 && var.timeout <= 30
+    error_message = "Timeout must be between 1 and 30 seconds. HTTP API v2 has a hard 30-second integration timeout that cannot be increased."
   }
 }
 

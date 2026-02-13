@@ -336,6 +336,11 @@ resource "aws_apigatewayv2_route" "post_mcp" {
 }
 
 # Route: GET /mcp — SSE streaming endpoint
+# NOTE: HTTP API v2 enforces a 30-second integration timeout on all routes.
+# Long-lived SSE connections will be forcibly closed at 30 seconds.
+# For long-polling, consider: (1) chunked-response pattern with reconnection,
+# (2) REST API with response streaming, or (3) Lambda Function URLs with
+# RESPONSE_STREAM invoke mode (incompatible with tenant isolation).
 resource "aws_apigatewayv2_route" "get_mcp" {
   api_id    = aws_apigatewayv2_api.this.id
   route_key = "GET /mcp"
