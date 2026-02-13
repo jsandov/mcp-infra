@@ -4,43 +4,31 @@ A production-ready, FedRAMP-compliant OpenTofu module that deploys a [Model Cont
 
 ## Architecture
 
-```
-MCP Client (Claude Code, Cursor, etc.)
-    |  HTTPS POST/GET/DELETE /mcp (JSON-RPC 2.0)
-    v
-+-------------------+
-| WAF v2 (optional) |  Rate limiting + IP filtering (SC-7)
-+-------------------+
-    |
-    v
-+--------------------------------------+
-| API Gateway v2 HTTP API              |
-|  - Cognito JWT Auth (IA-2)           |
-|    * Internal Cognito pool, OR       |
-|    * External Cognito pool           |
-|  - Access logging (AU-2)             |
-|  - Global throttling (CM-7)          |
-|  - Per-route throttle overrides      |
-|  - CORS: Mcp-Session-Id             |
-+--------------------------------------+
-    |
-    v
-+--------------------------------------+
-| Lambda Function                      |
-|  - Container image                   |
-|  - VPC private subnets               |
-|  - KMS-encrypted env (SC-28)         |
-|  - X-Ray tracing (SI-4)             |
-|  - Reserved concurrency              |
-|  - Tenant isolation mode (SC-7)      |
-|    * Firecracker VM per tenant       |
-+--------------------------------------+
-    |
-    +---> CloudWatch Logs (KMS-encrypted, AU-2/AU-3)
-    +---> CloudWatch Alarms --> SNS (SI-4, IR-4)
-    +---> DynamoDB Sessions (optional, KMS-encrypted)
-           * Composite key: tenant_id + session_id
-             (when tenant isolation enabled)
+```mermaid
+flowchart TD
+    Client["MCP Client\n(Claude Code, Cursor, etc.)"]
+    Client -->|"HTTPS POST/GET/DELETE /mcp\n(JSON-RPC 2.0)"| WAF
+
+    subgraph Edge["Edge Protection"]
+        WAF["WAFv2 (optional)\nRate limiting + IP filtering\n(SC-7)"]
+    end
+
+    WAF --> APIGW
+
+    subgraph APIGW_Group["API Gateway v2 HTTP API"]
+        APIGW["Cognito JWT Auth (IA-2)\nAccess logging (AU-2)\nGlobal throttling (CM-7)\nPer-route throttle overrides\nCORS: Mcp-Session-Id"]
+    end
+
+    APIGW --> Lambda
+
+    subgraph VPC["VPC Private Subnets"]
+        Lambda["Lambda Function\nContainer image\nKMS-encrypted env (SC-28)\nX-Ray tracing (SI-4)\nReserved concurrency\nTenant isolation mode (SC-7)\nFirecracker VM per tenant"]
+    end
+
+    Lambda --> CWLogs["CloudWatch Logs\n(KMS-encrypted, AU-2/AU-3)"]
+    Lambda --> CWAlarms["CloudWatch Alarms\n(SI-4)"]
+    Lambda -.->|"optional"| DynamoDB["DynamoDB Sessions\n(KMS-encrypted)\ntenant_id + session_id"]
+    CWAlarms --> SNS["SNS Notifications\n(IR-4)"]
 ```
 
 ## Usage
@@ -59,7 +47,8 @@ module "mcp_server" {
   vpc_subnet_ids         = module.vpc.private_subnet_ids
   vpc_security_group_ids = [module.vpc.lambda_security_group_id]
 
-  kms_key_arn = module.kms.key_arn
+  # Omit kms_key_arn for dev — uses AWS-managed encryption (no KMS cost)
+  # Set kms_key_arn = module.kms.key_arn for FedRAMP environments
 
   # Disable auth for local development
   enable_auth = false
@@ -219,7 +208,7 @@ module "metering" {
 | `vpc_id` | ID of the VPC where the Lambda function will run | `string` | n/a | yes |
 | `vpc_subnet_ids` | List of private subnet IDs for the Lambda function VPC configuration | `list(string)` | n/a | yes |
 | `vpc_security_group_ids` | List of security group IDs for the Lambda function VPC configuration | `list(string)` | n/a | yes |
-| `kms_key_arn` | ARN of the KMS key used to encrypt environment variables, logs, and data at rest | `string` | n/a | yes |
+| `kms_key_arn` | ARN of a customer-managed KMS key. When null, uses AWS-managed encryption (lower cost). Required for FedRAMP. | `string` | `null` | no |
 | `enable_auth` | Enable Cognito JWT authentication for the API Gateway (FedRAMP IA-2) | `bool` | `true` | no |
 | `enable_tenant_isolation` | Enable Lambda tenant isolation mode for per-tenant Firecracker VM isolation (FedRAMP SC-7) | `bool` | `false` | no |
 | `cognito_user_pool_id` | ID of an external Cognito user pool (skips creating internal pool) | `string` | `null` | no |

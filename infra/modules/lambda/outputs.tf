@@ -43,6 +43,16 @@ output "version" {
   value       = var.publish ? aws_lambda_function.this.version : null
 }
 
+output "alias_arn" {
+  description = "The ARN of the Lambda alias (null if alias is disabled)"
+  value       = try(aws_lambda_alias.this[0].arn, null)
+}
+
+output "alias_invoke_arn" {
+  description = "The invoke ARN of the Lambda alias for API Gateway integration (null if alias is disabled)"
+  value       = try(aws_lambda_alias.this[0].invoke_arn, null)
+}
+
 output "function_url" {
   description = "The Lambda function URL for direct HTTPS invocation (null if disabled)"
   value       = try(aws_lambda_function_url.this[0].function_url, null)

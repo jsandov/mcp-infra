@@ -87,6 +87,31 @@ output "tenant_isolation_enabled" {
   value       = var.enable_tenant_isolation
 }
 
+output "lambda_version" {
+  description = "The latest published Lambda version (null if canary deployment is disabled)"
+  value       = var.enable_canary_deployment ? aws_lambda_function.this.version : null
+}
+
+output "canary_alias_arn" {
+  description = "ARN of the Lambda canary alias (null if canary deployment is disabled)"
+  value       = try(aws_lambda_alias.canary[0].arn, null)
+}
+
+output "mtls_domain_name" {
+  description = "The custom domain name configured for mTLS (null if mTLS is disabled)"
+  value       = try(aws_apigatewayv2_domain_name.mtls[0].domain_name, null)
+}
+
+output "mtls_domain_target" {
+  description = "The target domain name for DNS CNAME/alias records (null if mTLS is disabled)"
+  value       = try(aws_apigatewayv2_domain_name.mtls[0].domain_name_configuration[0].target_domain_name, null)
+}
+
+output "mtls_domain_hosted_zone_id" {
+  description = "The Route53 hosted zone ID for the mTLS custom domain (null if mTLS is disabled)"
+  value       = try(aws_apigatewayv2_domain_name.mtls[0].domain_name_configuration[0].hosted_zone_id, null)
+}
+
 output "session_table_replica_regions" {
   description = "List of regions where DynamoDB global table replicas are deployed (empty if disabled)"
   value       = var.enable_global_table ? var.replica_regions : []
