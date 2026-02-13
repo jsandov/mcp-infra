@@ -246,6 +246,7 @@ resource "aws_lambda_function" "this" {
   memory_size   = var.memory_size
   timeout       = var.timeout
   kms_key_arn   = var.kms_key_arn
+  publish       = var.enable_canary_deployment
 
   reserved_concurrent_executions = var.reserved_concurrent_executions
 
@@ -283,6 +284,27 @@ resource "aws_lambda_function" "this" {
   depends_on = [aws_cloudwatch_log_group.lambda]
 
   tags = local.tags
+}
+
+# ---------------------------------------------------------------------------
+# Lambda Alias — Canary Routing (conditional)
+# ---------------------------------------------------------------------------
+
+resource "aws_lambda_alias" "canary" {
+  count = var.enable_canary_deployment ? 1 : 0
+
+  name             = var.canary_alias_name
+  function_name    = aws_lambda_function.this.function_name
+  function_version = aws_lambda_function.this.version
+
+  dynamic "routing_config" {
+    for_each = var.canary_version != null && var.canary_weight > 0 ? [1] : []
+    content {
+      additional_version_weights = {
+        (var.canary_version) = var.canary_weight
+      }
+    }
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -363,11 +385,11 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   }
 }
 
-# Lambda integration
+# Lambda integration — routes to alias when canary is enabled, otherwise to $LATEST
 resource "aws_apigatewayv2_integration" "lambda" {
   api_id                 = aws_apigatewayv2_api.this.id
   integration_type       = "AWS_PROXY"
-  integration_uri        = aws_lambda_function.this.invoke_arn
+  integration_uri        = var.enable_canary_deployment ? aws_lambda_alias.canary[0].invoke_arn : aws_lambda_function.this.invoke_arn
   payload_format_version = "2.0"
 }
 
@@ -414,6 +436,7 @@ resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.this.function_name
+  qualifier     = var.enable_canary_deployment ? aws_lambda_alias.canary[0].name : null
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.this.execution_arn}/*/*/mcp"
 }

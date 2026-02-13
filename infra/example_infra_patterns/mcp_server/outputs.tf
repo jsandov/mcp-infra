@@ -86,3 +86,13 @@ output "tenant_isolation_enabled" {
   description = "Whether Lambda tenant isolation mode is enabled"
   value       = var.enable_tenant_isolation
 }
+
+output "lambda_version" {
+  description = "The latest published Lambda version (null if canary deployment is disabled)"
+  value       = var.enable_canary_deployment ? aws_lambda_function.this.version : null
+}
+
+output "canary_alias_arn" {
+  description = "ARN of the Lambda canary alias (null if canary deployment is disabled)"
+  value       = try(aws_lambda_alias.canary[0].arn, null)
+}
